@@ -1,0 +1,8 @@
+{
+  "name": "sonia",
+  "version": "0.1.0",
+  "description": "Sonia - assistente virtual para academia (Grupo Scriptum)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
