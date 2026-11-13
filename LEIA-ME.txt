@@ -14,3 +14,11 @@ DICAS
 - Arraste a Sonia para girar; clique duas vezes (ou no botao Zoom) para mudar o enquadramento.
 - O botao "Voz" liga/desliga a fala da Sonia (usa a voz do proprio navegador; funciona melhor no Chrome ou Edge).
 - A chave do Gemini fica so no servidor (.env). Nunca envie o .env para o GitHub.
+
+ARQUIVOS
+- server.js ........ servidor (chat + Gemini + ferramentas)
+- persona.js ....... personalidade e regras da Sonia
+- src/data.js ...... dados FICTICIOS da academia (aluno, rotina, horarios) - e o que um banco de dados vai substituir
+- src/tools.js ..... ferramentas da Sonia e regras de negocio (vagas, 2h para cancelar, check-in)
+- test.js .......... testes das regras: node test.js
+- public/ .......... site (index.html, avatar.js, models/sonia.glb, img/academia.jpg)

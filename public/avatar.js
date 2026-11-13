@@ -4,11 +4,12 @@
 (function () {
   const MODEL_URL = '/models/sonia.glb';
   const BG_URL = '/img/academia.jpg';
-  const BG_DISTANCE = 2.2;   // distância da parede de fundo atrás da Sonia (m)
-  const BG_Y = 0.0;          // ajuste vertical do cenário
+  const BG_DISTANCE = 1.3;   // distância da parede de fundo atrás da Sonia (m)
+  const BG_FLOOR_V = 0.80;   // altura (0 topo, 1 base) do ponto da imagem onde os pés da Sonia pisam no chão
+  const BG_SHIFT_X = 0.0;    // ajuste horizontal do cenário
   const FOV = 28 * Math.PI / 180;
   const DIST_MAX = 2.55;     // câmera mais afastada (corpo inteiro)
-  const MAX_YAW = 0.5;       // giro máximo da câmera ao arrastar (~28°)
+  const MAX_YAW = 0.35;      // giro máximo da câmera ao arrastar (~28°)
   const canvas = document.getElementById('avatar');
   const gl = canvas.getContext('webgl2', { alpha: true, antialias: true, premultipliedAlpha: false });
 
@@ -240,10 +241,14 @@
       const needH = visH * 1.25;
       const needW = visH * asp * 1.25 + 2 * farD * Math.tan(MAX_YAW) * 1.15;
       const ph = Math.max(needH, needW / bgAspect), pw = ph * bgAspect;
+      // posiciona o cenário para que os pés da Sonia (y = -0.5) fiquem sobre o chão da imagem:
+      // o raio câmera->pés continua até a parede, e é ali que o ponto BG_FLOOR_V da imagem deve ficar
+      const feetOnWall = eye[1] + (-0.5 - eye[1]) * (eye[2] + BG_DISTANCE) / eye[2];
+      const bgY = feetOnWall - (0.5 - BG_FLOOR_V) * ph;
       gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
       gl.useProgram(bgProg);
       gl.uniformMatrix4fv(bgLoc.vp, false, vp);
-      gl.uniform3f(bgLoc.center, 0, BG_Y, -BG_DISTANCE);
+      gl.uniform3f(bgLoc.center, BG_SHIFT_X, bgY, -BG_DISTANCE);
       gl.uniform2f(bgLoc.size, pw, ph);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.uniform1i(bgLoc.tex, 0);
       gl.bindVertexArray(bgVao);

@@ -3,6 +3,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PERSONA } = require('./persona.js');
+const D = require('./src/data.js');
+const { declaracoes, runTool } = require('./src/tools.js');
 
 // ---- lê o arquivo .env (GEMINI_API_KEY, GEMINI_MODEL, PORT) ----
 try {
@@ -28,31 +30,57 @@ function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 
-async function askGemini(history) {
-  // Sem chave: resposta de teste, para a tela funcionar mesmo sem o Gemini configurado.
-  if (!API_KEY) {
-    return '[modo teste: falta a GEMINI_API_KEY no arquivo .env] Oi, eu sou a Sonia! Assim que a chave for configurada, eu respondo de verdade. 💪';
-  }
+function contexto() {
+  const n = D.agora(), a = D.ALUNO;
+  return `\n\nCONTEXTO (use nas ferramentas)\n- Agora: ${D.nomeDia(n.date)}, ${D.dataBR(n.date)} (${n.date}), ${n.time}, horário de Brasília.\n- Aluno logado: ${a.nome}, ${a.idade} anos, ${a.pesoKg} kg, ${a.alturaM} m, nível ${a.nivel}, objetivo: ${a.objetivo}, instrutor: ${a.instrutor}.\n- Os dados da academia são fictícios (demonstração).`;
+}
+
+async function callGemini(contents) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: PERSONA }] },
-      contents: history.map((m) => ({ role: m.role === 'sonia' ? 'model' : 'user', parts: [{ text: m.text }] })),
-      generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
+      system_instruction: { parts: [{ text: PERSONA + contexto() }] },
+      contents,
+      tools: [{ functionDeclarations: declaracoes }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
     }),
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const msg = (data.error && data.error.message) || `erro ${r.status}`;
-    console.error('Gemini:', r.status, msg);
+    console.error('Gemini:', r.status, (data.error && data.error.message) || '');
     throw new Error(r.status === 429 ? 'limite' : 'gemini');
   }
-  const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
-  const text = parts && parts.map((p) => p.text || '').join('').trim();
-  if (!text) throw new Error('vazio');
-  return text;
+  return data;
+}
+
+// Conversa com o Gemini: ele pode pedir ferramentas; executamos e devolvemos o resultado até vir a resposta final.
+async function askGemini(history) {
+  if (!API_KEY) {
+    return { reply: '[modo teste: falta a GEMINI_API_KEY no arquivo .env] Oi, eu sou a Sonia! Assim que a chave for configurada, eu respondo de verdade. 💪', cards: [] };
+  }
+  const contents = history.map((m) => ({ role: m.role === 'sonia' ? 'model' : 'user', parts: [{ text: m.text }] }));
+  const cards = [];
+  for (let i = 0; i < 6; i++) {
+    const data = await callGemini(contents);
+    const cand = data.candidates && data.candidates[0];
+    const parts = (cand && cand.content && cand.content.parts) || [];
+    const calls = parts.filter((p) => p.functionCall);
+    if (!calls.length) {
+      const text = parts.map((p) => p.text || '').join('').trim();
+      if (!text) throw new Error('vazio');
+      return { reply: text, cards };
+    }
+    contents.push(cand.content); // devolve o turno do modelo exatamente como veio
+    const respostas = calls.map((p) => {
+      const out = runTool(p.functionCall.name, p.functionCall.args);
+      cards.push(...out.cards);
+      return { functionResponse: { name: p.functionCall.name, response: out.result } };
+    });
+    contents.push({ role: 'user', parts: respostas });
+  }
+  throw new Error('muitas-chamadas');
 }
 
 const server = http.createServer(async (req, res) => {
@@ -69,8 +97,8 @@ const server = http.createServer(async (req, res) => {
           .map((m) => ({ role: m.role === 'sonia' ? 'sonia' : 'user', text: String(m.text || '').slice(0, MAX_MSG) }))
           .filter((m) => m.text.trim());
         if (!history.length || history[history.length - 1].role !== 'user') return send(res, 400, { error: 'Mensagem inválida.' });
-        const reply = await askGemini(history);
-        send(res, 200, { reply });
+        const { reply, cards } = await askGemini(history);
+        send(res, 200, { reply, cards });
       } catch (e) {
         const friendly = e.message === 'limite'
           ? 'Eita, recebi mensagem demais agora! Espera um minutinho e tenta de novo, combinado?'
@@ -79,6 +107,11 @@ const server = http.createServer(async (req, res) => {
       }
     });
     return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/reset') { // reinicia os agendamentos de demonstração
+    D.semear();
+    return send(res, 200, { ok: true });
   }
 
   if (req.method === 'GET') {
