@@ -1,13 +1,21 @@
 // Visualizador 3D da Sonia: WebGL puro, sem bibliotecas externas.
-// Carrega um arquivo .glb simples (1 malha + 1 textura) e anima o modelo por código.
+// Carrega um .glb simples (1 malha + 1 textura). O cenário da academia é uma "parede" 3D atrás da Sonia,
+// vista pela MESMA câmera: ao aproximar, afastar ou arrastar, a perspectiva do fundo muda junto (paralaxe real).
 (function () {
   const MODEL_URL = '/models/sonia.glb';
+  const BG_URL = '/img/academia.jpg';
+  const BG_DISTANCE = 2.2;   // distância da parede de fundo atrás da Sonia (m)
+  const BG_Y = 0.0;          // ajuste vertical do cenário
+  const FOV = 28 * Math.PI / 180;
+  const DIST_MAX = 2.55;     // câmera mais afastada (corpo inteiro)
+  const MAX_YAW = 0.5;       // giro máximo da câmera ao arrastar (~28°)
   const canvas = document.getElementById('avatar');
   const gl = canvas.getContext('webgl2', { alpha: true, antialias: true, premultipliedAlpha: false });
+
   // zoom: 0 = busto, 1 = corpo inteiro; começa no meio-corpo e alterna entre 3 enquadramentos
   const LEVELS = [0.45, 0, 1];
   let level = 0;
-  const state = { speaking: 0, speakTarget: 0, zoom: LEVELS[0], zoomTarget: LEVELS[0], drag: 0, dragTarget: 0 };
+  const state = { speaking: 0, speakTarget: 0, zoom: LEVELS[0], zoomTarget: LEVELS[0], yaw: 0, yawTarget: 0 };
   const cycleZoom = () => { level = (level + 1) % LEVELS.length; state.zoomTarget = LEVELS[level]; };
 
   if (!gl) {
@@ -17,6 +25,12 @@
   }
 
   // ---------- matrizes (column-major) ----------
+  const V = {
+    sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+    cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+    dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+    norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+  };
   const M = {
     ident: () => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
     mul(a, b) {
@@ -34,10 +48,30 @@
     },
     rotY(a) { const c = Math.cos(a), s = Math.sin(a), o = M.ident(); o[0] = c; o[2] = -s; o[8] = s; o[10] = c; return o; },
     trans(x, y, z) { const o = M.ident(); o[12] = x; o[13] = y; o[14] = z; return o; },
+    lookAt(e, t, up) {
+      const z = V.norm(V.sub(e, t)), x = V.norm(V.cross(up, z)), y = V.cross(z, x), o = M.ident();
+      o[0] = x[0]; o[4] = x[1]; o[8] = x[2]; o[12] = -V.dot(x, e);
+      o[1] = y[0]; o[5] = y[1]; o[9] = y[2]; o[13] = -V.dot(y, e);
+      o[2] = z[0]; o[6] = z[1]; o[10] = z[2]; o[14] = -V.dot(z, e);
+      return o;
+    },
   };
 
-  // ---------- shaders ----------
-  const VS = `#version 300 es
+  function shader(type, src) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program(vs, fs) {
+    const p = gl.createProgram();
+    gl.attachShader(p, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+
+  // ---------- programa da Sonia ----------
+  const prog = program(`#version 300 es
   in vec3 aPos; in vec3 aNor; in vec2 aUv;
   uniform mat4 uMVP; uniform mat4 uModel;
   out vec3 vN; out vec2 vUv; out vec3 vW;
@@ -45,8 +79,7 @@
     vec4 w = uModel * vec4(aPos,1.0);
     vW = w.xyz; vN = mat3(uModel) * aNor; vUv = aUv;
     gl_Position = uMVP * vec4(aPos,1.0);
-  }`;
-  const FS = `#version 300 es
+  }`, `#version 300 es
   precision highp float;
   in vec3 vN; in vec2 vUv; in vec3 vW;
   uniform sampler2D uTex; uniform vec3 uCam;
@@ -56,27 +89,56 @@
     vec3 v = normalize(uCam - vW);
     vec3 key  = normalize(vec3(-0.45, 0.65, 0.85));
     vec3 fill = normalize(vec3( 0.70, 0.10, 0.55));
-    float d = max(dot(n,key),0.0) * 0.80 + max(dot(n,fill),0.0) * 0.28;
-    float rim = pow(1.0 - max(dot(n,v),0.0), 3.0) * 0.22;
+    float dk = max(dot(n,key),0.0) * 0.85;
+    float df = max(dot(n,fill),0.0) * 0.30;
+    float rim = pow(1.0 - max(dot(n,v),0.0), 3.0) * 0.30;
     vec3 tex = texture(uTex, vUv).rgb;
-    vec3 col = tex * (0.46 + d) + vec3(0.30,0.80,0.78) * rim;
+    // luz quente de fim de tarde (janelas) + preenchimento azulado, combinando com o cenário
+    vec3 light = vec3(0.50,0.48,0.52) + vec3(1.0,0.93,0.82) * dk + vec3(0.62,0.74,1.0) * df;
+    vec3 col = tex * light + vec3(1.0,0.62,0.30) * rim;
     outColor = vec4(col, 1.0);
-  }`;
-  function shader(type, src) {
-    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
-    return s;
-  }
-  const prog = gl.createProgram();
-  gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS));
-  gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  }`);
   const loc = {
     pos: gl.getAttribLocation(prog, 'aPos'), nor: gl.getAttribLocation(prog, 'aNor'), uv: gl.getAttribLocation(prog, 'aUv'),
     mvp: gl.getUniformLocation(prog, 'uMVP'), model: gl.getUniformLocation(prog, 'uModel'),
     tex: gl.getUniformLocation(prog, 'uTex'), cam: gl.getUniformLocation(prog, 'uCam'),
   };
+
+  // ---------- programa do cenário (um plano grande atrás da Sonia) ----------
+  const bgProg = program(`#version 300 es
+  in vec2 aP;
+  uniform mat4 uVP; uniform vec3 uCenter; uniform vec2 uSize;
+  out vec2 vUv;
+  void main(){
+    vUv = vec2(aP.x + 0.5, 0.5 - aP.y);
+    gl_Position = uVP * vec4(uCenter + vec3(aP * uSize, 0.0), 1.0);
+  }`, `#version 300 es
+  precision highp float;
+  in vec2 vUv; uniform sampler2D uBg; out vec4 outColor;
+  void main(){ outColor = vec4(texture(uBg, vUv).rgb * 0.92, 1.0); }`);
+  const bgLoc = {
+    p: gl.getAttribLocation(bgProg, 'aP'), vp: gl.getUniformLocation(bgProg, 'uVP'),
+    center: gl.getUniformLocation(bgProg, 'uCenter'), size: gl.getUniformLocation(bgProg, 'uSize'), tex: gl.getUniformLocation(bgProg, 'uBg'),
+  };
+  const bgVao = gl.createVertexArray(); gl.bindVertexArray(bgVao);
+  const qb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, qb);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-.5, -.5, .5, -.5, -.5, .5, .5, .5]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(bgLoc.p); gl.vertexAttribPointer(bgLoc.p, 2, gl.FLOAT, false, 0, 0);
+  let bgTex = null, bgAspect = 941 / 1672;
+
+  function makeTexture(bmp) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bmp);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+    if (ext) gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4);
+    return t;
+  }
 
   // ---------- leitura do GLB ----------
   async function loadGLB(url) {
@@ -129,14 +191,7 @@
     bind(m.pos, loc.pos, 3); bind(normals(m.pos, m.idx), loc.nor, 3); bind(m.uv, loc.uv, 2);
     const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
     count = m.idx.length;
-    texture = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, m.bmp);
-    gl.generateMipmap(gl.TEXTURE_2D);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    const ext = gl.getExtension('EXT_texture_filter_anisotropic');
-    if (ext) gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4);
+    texture = makeTexture(m.bmp);
     mesh = m;
   }
 
@@ -156,52 +211,79 @@
     const t = (now - t0) / 1000;
     state.speaking = lerp(state.speaking, state.speakTarget, 1 - Math.exp(-dt * 6));
     state.zoom = lerp(state.zoom, state.zoomTarget, 1 - Math.exp(-dt * 4));
-    state.drag = lerp(state.drag, state.dragTarget, 1 - Math.exp(-dt * 8));
+    state.yaw = lerp(state.yaw, state.yawTarget, 1 - Math.exp(-dt * 8));
 
     resize();
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0, 0, 0, 0);
+    gl.clearColor(0.04, 0.04, 0.04, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
 
-    // movimento: balanço suave parada; mais "animada" quando fala
+    // movimento da Sonia: balanço suave parada; mais "animada" quando fala
     const s = state.speaking;
-    const rotY = state.drag + Math.sin(t * 0.55) * 0.09 + Math.sin(t * 4.6) * 0.035 * s;
+    const rotY = Math.sin(t * 0.55) * 0.05 + Math.sin(t * 4.6) * 0.03 * s;
     const bob = Math.sin(t * 1.7) * 0.0025 + Math.abs(Math.sin(t * 8.5)) * 0.007 * s;
     const model = M.mul(M.trans(0, bob, 0), M.rotY(rotY));
 
-    // câmera: busto (zoom=0) ou corpo inteiro (zoom=1)
-    const targetY = lerp(0.20, 0.0, state.zoom), dist = lerp(1.25, 2.55, state.zoom);
+    // câmera: busto (zoom=0) ou corpo inteiro (zoom=1); arrastar orbita a câmera em volta da Sonia
+    const targetY = lerp(0.20, 0.0, state.zoom), dist = lerp(1.25, DIST_MAX, state.zoom);
     const asp = canvas.width / canvas.height;
-    const proj = M.persp(28 * Math.PI / 180, asp, 0.1, 10);
-    const camPos = [0, targetY + 0.02, dist];
-    const view = M.trans(-camPos[0], -camPos[1], -camPos[2]);
-    const mvp = M.mul(proj, M.mul(view, model));
+    const proj = M.persp(FOV, asp, 0.1, 20);
+    const a = Math.max(-MAX_YAW, Math.min(MAX_YAW, state.yaw));
+    const eye = [dist * Math.sin(a), targetY + 0.02, dist * Math.cos(a)];
+    const view = M.lookAt(eye, [0, targetY, 0], [0, 1, 0]);
+    const vp = M.mul(proj, view);
 
+    // ---- cenário: plano grande atrás da Sonia, dimensionado para cobrir qualquer enquadramento ----
+    if (bgTex) {
+      const farD = DIST_MAX + BG_DISTANCE;
+      const visH = 2 * farD * Math.tan(FOV / 2);
+      const needH = visH * 1.25;
+      const needW = visH * asp * 1.25 + 2 * farD * Math.tan(MAX_YAW) * 1.15;
+      const ph = Math.max(needH, needW / bgAspect), pw = ph * bgAspect;
+      gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+      gl.useProgram(bgProg);
+      gl.uniformMatrix4fv(bgLoc.vp, false, vp);
+      gl.uniform3f(bgLoc.center, 0, BG_Y, -BG_DISTANCE);
+      gl.uniform2f(bgLoc.size, pw, ph);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.uniform1i(bgLoc.tex, 0);
+      gl.bindVertexArray(bgVao);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // ---- Sonia ----
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     gl.useProgram(prog);
-    gl.uniformMatrix4fv(loc.mvp, false, mvp);
+    gl.uniformMatrix4fv(loc.mvp, false, M.mul(vp, model));
     gl.uniformMatrix4fv(loc.model, false, model);
-    gl.uniform3fv(loc.cam, camPos);
+    gl.uniform3fv(loc.cam, eye);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture); gl.uniform1i(loc.tex, 0);
     gl.bindVertexArray(vao);
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, 0);
   }
 
-  // arrastar para girar (mouse ou toque)
+  // arrastar para olhar de outro ângulo (mouse ou toque); ao soltar, a câmera volta ao centro
   let dragging = false, lastX = 0, base = 0;
   canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; canvas.setPointerCapture(e.pointerId); });
-  canvas.addEventListener('pointermove', (e) => { if (dragging) { base += (e.clientX - lastX) * 0.01; lastX = e.clientX; state.dragTarget = base; } });
-  const end = () => { dragging = false; base = 0; state.dragTarget = 0; };
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    base = Math.max(-MAX_YAW, Math.min(MAX_YAW, base - (e.clientX - lastX) * 0.006)); lastX = e.clientX; state.yawTarget = base;
+  });
+  const end = () => { dragging = false; base = 0; state.yawTarget = 0; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('dblclick', cycleZoom);
 
   window.sonia = {
     setSpeaking(on) { state.speakTarget = on ? 1 : 0; },
     toggleZoom: cycleZoom,
+    setLevel(i) { level = i; state.zoomTarget = LEVELS[i]; state.zoom = LEVELS[i]; },   // usado em testes
+    setYaw(a) { state.yaw = a; state.yawTarget = a; },                                  // usado em testes
     ready: false,
   };
 
-  loadGLB(MODEL_URL).then((m) => {
+  const loadBg = fetch(BG_URL).then((r) => r.blob()).then((b) => createImageBitmap(b, { imageOrientation: 'none' }))
+    .then((bmp) => { bgTex = makeTexture(bmp); bgAspect = bmp.width / bmp.height; })
+    .catch((e) => console.warn('Cenário não carregou:', e));
+  Promise.all([loadGLB(MODEL_URL), loadBg]).then(([m]) => {
     upload(m); window.sonia.ready = true;
     document.getElementById('avatar-loading').hidden = true;
     requestAnimationFrame(frame);

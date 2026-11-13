@@ -3,68 +3,127 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050505">
 <title>Sonia – Assistente Virtual da Academia</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23ff7a1a'/%3E%3Ctext x='32' y='43' font-size='34' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%23050505'%3ES%3C/text%3E%3C/svg%3E">
 <style>
-  :root { --bg:#0b1626; --panel:#13243d; --panel2:#0f1d33; --me:#2f6fed; --sonia:#1d3555; --text:#eef3fb; --muted:#9fb0c8; --accent:#4fd1c5; --line:#26405f; }
+  :root {
+    --bg:#050505; --panel:#0c0c0c; --panel2:#151515; --ink:#0a0a0a;
+    --text:#f4f1ee; --muted:#b4aca4; --line:rgba(255,255,255,.09);
+    --accent:#ff8a1f; --accent2:#ff5a00; --blue:#ff9a3d;
+    --sonia:rgba(34,30,27,.95); --glass:rgba(8,8,8,.62);
+  }
   * { box-sizing: border-box; }
   [hidden] { display:none !important; }
   html, body { height: 100%; }
-  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--bg); color:var(--text); }
-  .layout { height:100vh; display:grid; grid-template-columns: minmax(300px, 42%) 1fr; }
-  /* ----- lado da Sonia ----- */
-  .stage { position:relative; background: radial-gradient(120% 90% at 50% 25%, #1f4a7a 0%, #12294a 45%, #0b1626 100%); overflow:hidden; display:flex; flex-direction:column; }
-  .stage header { padding:16px 20px; display:flex; align-items:center; gap:12px; z-index:2; }
-  .stage .logo { width:40px; height:40px; border-radius:50%; background:var(--accent); color:#0b1626; display:grid; place-items:center; font-weight:bold; font-size:18px; }
-  .stage h1 { font-size:18px; margin:0; letter-spacing:.3px; }
-  .stage small { color:var(--muted); display:block; }
+  body { margin:0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .layout { height:100vh; display:grid; grid-template-columns: minmax(320px, 44%) 1fr; }
+
+  /* ---------- palco da Sonia ---------- */
+  .stage { position:relative; overflow:hidden; background:#050505; isolation:isolate; }
+  .shade { position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,0) 24%, rgba(0,0,0,0) 62%, rgba(0,0,0,.78) 100%),
+      radial-gradient(90% 70% at 50% 55%, rgba(0,0,0,0) 55%, rgba(0,0,0,.5) 100%); }
   #avatar { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:grab; }
   #avatar:active { cursor:grabbing; }
-  #avatar-loading, #avatar-fallback { position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); text-align:center; padding:24px; }
-  #avatar-fallback .big { width:120px; height:120px; border-radius:50%; background:var(--accent); color:#0b1626; display:grid; place-items:center; font-size:56px; font-weight:bold; margin:0 auto 12px; }
-  .status { position:absolute; left:0; right:0; bottom:14px; text-align:center; font-size:13px; color:var(--muted); z-index:2; }
-  .status b { color:var(--accent); }
-  .tools { position:absolute; right:14px; top:14px; z-index:3; display:flex; gap:8px; }
-  .tools button { background:rgba(15,29,51,.75); color:var(--text); border:1px solid var(--line); border-radius:18px; padding:7px 12px; font-size:13px; cursor:pointer; }
-  .tools button[aria-pressed="false"] { opacity:.6; }
-  /* ----- chat ----- */
-  .chat-col { display:flex; flex-direction:column; background:var(--panel); min-width:0; height:100vh; }
-  #chat { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px; }
-  .msg { max-width:82%; padding:10px 14px; border-radius:16px; line-height:1.45; white-space:pre-wrap; word-wrap:break-word; }
-  .me { align-self:flex-end; background:var(--me); border-bottom-right-radius:4px; }
-  .sonia { align-self:flex-start; background:var(--sonia); border-bottom-left-radius:4px; }
+  .stage header { position:absolute; top:16px; left:16px; display:flex; align-items:center; gap:12px; padding:8px 16px 8px 8px; background:var(--glass); border:1px solid var(--line); border-radius:40px; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:3; }
+  .logo { width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--ink); display:grid; place-items:center; font-weight:800; font-size:19px; box-shadow:0 0 0 3px rgba(255,122,26,.25); }
+  .stage h1 { font-size:18px; margin:0; letter-spacing:.4px; line-height:1.1; display:flex; align-items:center; gap:8px; }
+  .badge { font-size:10px; font-weight:700; letter-spacing:.8px; background:rgba(255,122,26,.18); color:var(--blue); border:1px solid rgba(255,122,26,.45); padding:2px 6px; border-radius:8px; }
+  .stage header small { color:var(--muted); display:block; font-size:12px; margin-top:2px; }
+  .tools { position:absolute; right:16px; top:16px; z-index:3; display:flex; gap:8px; }
+  .tools button { background:var(--glass); color:var(--text); border:1px solid var(--line); border-radius:20px; padding:9px 14px; font-size:13px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:background .15s, border-color .15s; }
+  .tools button:hover { border-color:rgba(255,122,26,.6); }
+  .tools button[aria-pressed="false"] { opacity:.65; }
+  .plate { position:absolute; left:16px; right:16px; bottom:16px; z-index:3; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+  .plate .card-name { background:var(--glass); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:14px; padding:10px 14px; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); max-width:340px; }
+  .plate b { font-size:13px; letter-spacing:2px; color:var(--accent); display:block; }
+  .plate .long { font-size:12px; color:var(--text); opacity:.9; line-height:1.35; display:block; margin-top:2px; }
+  .state { display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
+  .dot { width:8px; height:8px; border-radius:50%; background:#4ade80; box-shadow:0 0 8px #4ade80; }
+  .bars { display:none; align-items:flex-end; gap:2px; height:14px; }
+  .bars i { width:3px; background:var(--accent); border-radius:2px; animation:eq .8s ease-in-out infinite; }
+  .bars i:nth-child(2) { animation-delay:.15s; } .bars i:nth-child(3) { animation-delay:.3s; } .bars i:nth-child(4) { animation-delay:.45s; }
+  @keyframes eq { 0%,100% { height:3px; } 50% { height:14px; } }
+  .stage.speaking .bars { display:flex; }
+  .stage.speaking .dot { display:none; }
+  .stage.speaking .state { color:var(--accent); }
+  .hint { font-size:11px; color:var(--text); opacity:.6; text-align:right; max-width:150px; text-shadow:0 1px 4px rgba(0,0,0,.8); }
+  #avatar-loading, #avatar-fallback { position:absolute; inset:0; z-index:2; display:grid; place-items:center; color:var(--text); text-align:center; padding:24px; }
+  #avatar-fallback .big { width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--ink); display:grid; place-items:center; font-size:56px; font-weight:800; margin:0 auto 12px; }
+
+  /* ---------- chat ---------- */
+  .chat-col { display:flex; flex-direction:column; background:linear-gradient(180deg,#0c0c0c 0%,#050505 100%); min-width:0; height:100vh; border-left:1px solid var(--line); }
+  .chat-top { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--line); }
+  .chat-top h2 { margin:0; font-size:16px; font-weight:600; }
+  .chat-top small { color:var(--muted); display:flex; align-items:center; gap:6px; }
+  #chat { flex:1; overflow-y:auto; padding:22px 24px; display:flex; flex-direction:column; gap:12px; scrollbar-width:thin; scrollbar-color:#3a2a1c transparent; }
+  .msg { max-width:80%; padding:11px 15px; border-radius:18px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .me { align-self:flex-end; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#140a02; font-weight:500; border-bottom-right-radius:5px; }
+  .sonia { align-self:flex-start; background:var(--sonia); border:1px solid var(--line); border-bottom-left-radius:5px; }
   .typing { color:var(--muted); font-style:italic; }
-  .chips { display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 10px; }
-  .chips button { background:transparent; color:var(--accent); border:1px solid var(--accent); border-radius:16px; padding:6px 12px; font-size:13px; cursor:pointer; }
-  .chips button:hover { background:rgba(79,209,197,.12); }
-  form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--panel2); }
-  input { flex:1; padding:12px 14px; border-radius:22px; border:1px solid #2c4a70; background:#0b1626; color:var(--text); font-size:16px; min-width:0; }
-  form button { padding:0 22px; border:0; border-radius:22px; background:var(--accent); color:#0b1626; font-weight:bold; font-size:15px; cursor:pointer; }
+  .card { align-self:flex-start; width:min(360px,86%); background:var(--panel2); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:14px; padding:12px 16px; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .card h3 { margin:0 0 6px; font-size:14px; color:var(--accent); }
+  .card ul { margin:0; padding-left:18px; line-height:1.65; }
+  .card a.btn { display:inline-block; margin-top:10px; padding:7px 14px; border-radius:16px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#140a02; font-weight:700; text-decoration:none; font-size:13px; }
+  .card iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:10px; margin-top:8px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; padding:0 24px 12px; }
+  .chips button { background:rgba(255,122,26,.08); color:var(--accent); border:1px solid rgba(255,122,26,.5); border-radius:18px; padding:8px 14px; font-size:13px; cursor:pointer; transition:background .15s; }
+  .chips button:hover { background:rgba(255,122,26,.2); }
+  form { display:flex; align-items:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line); background:var(--panel); }
+  textarea { flex:1; padding:13px 18px; border-radius:24px; border:1px solid rgba(255,255,255,.14); background:#0a0a0a; color:var(--text); font-size:16px; font-family:inherit; min-width:0; resize:none; line-height:1.35; max-height:140px; overflow-y:auto; }
+  textarea::placeholder { color:#8a8178; }
+  textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,122,26,.18); }
+  form button { height:48px; padding:0 24px; border:0; border-radius:24px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#140a02; font-weight:700; font-size:15px; cursor:pointer; }
   form button:disabled { opacity:.5; cursor:default; }
-  .note { text-align:center; color:var(--muted); font-size:12px; padding:0 12px 10px; background:var(--panel2); }
+  .note { text-align:center; color:var(--muted); font-size:12px; padding:0 12px 12px; background:var(--panel); }
+
   @media (max-width: 820px) {
-    .layout { grid-template-columns: 1fr; grid-template-rows: 38vh 1fr; }
-    .chat-col { height:auto; min-height:0; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; height:100vh; }
+    .chat-col { height:auto; min-height:0; border-left:0; }
+    .stage header { top:10px; left:10px; padding:5px 12px 5px 5px; }
+    .logo { width:34px; height:34px; font-size:16px; }
+    .stage header small, .hint, .plate .long { display:none; }
+    .tools { top:10px; right:10px; }
+    .tools button { padding:7px 11px; }
+    .plate { left:10px; right:10px; bottom:10px; }
+    .chat-top { padding:10px 16px; }
+    #chat { padding:14px 16px; }
+    .chips { padding:0 16px 10px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+    .chips button { white-space:nowrap; flex:0 0 auto; }
   }
+  @media (prefers-reduced-motion: reduce) { .bars i { animation:none; height:10px; } }
 </style>
 </head>
 <body>
 <div class="layout">
-  <section class="stage" aria-label="Sonia">
-    <header>
-      <div class="logo">S</div>
-      <div><h1>Sonia</h1><small>Assistente virtual da academia</small></div>
-    </header>
+  <section class="stage" id="stage" aria-label="Sonia">
     <canvas id="avatar" aria-label="Sonia em 3D. Arraste para girar, clique duas vezes para mudar o zoom."></canvas>
+    <div class="shade"></div>
     <div id="avatar-loading">Carregando a Sonia…</div>
     <div id="avatar-fallback" hidden><div><div class="big">S</div>Não consegui mostrar o avatar 3D neste navegador, mas a Sonia continua disponível no chat.</div></div>
+    <header>
+      <div class="logo">S</div>
+      <div><h1>Sonia <span class="badge">IA</span></h1><small>Assistente virtual da academia</small></div>
+    </header>
     <div class="tools">
       <button id="btn-voice" type="button" aria-pressed="true" title="Ligar ou desligar a voz da Sonia">🔊 Voz</button>
       <button id="btn-zoom" type="button" title="Mudar o enquadramento">🔍 Zoom</button>
     </div>
-    <div class="status" id="status">Arraste para girar · clique duas vezes para mudar o zoom</div>
+    <div class="plate">
+      <div class="card-name">
+        <b>S.O.N.I.A.</b>
+        <span class="long">Scriptum Orientadora e Navegadora da Inteligência Aplicada</span>
+        <div class="state"><i class="dot"></i><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="status">Online · pronta para ajudar</span></div>
+      </div>
+      <div class="hint">Arraste para girar<br>Duplo clique muda o zoom</div>
+    </div>
   </section>
 
   <section class="chat-col">
+    <div class="chat-top"><h2>Conversa com a Sonia</h2><small><i class="dot"></i> online</small></div>
     <div id="chat" aria-live="polite"></div>
     <div class="chips" id="chips">
       <button type="button">Qual é a minha rotina de hoje?</button>
@@ -73,7 +132,7 @@
       <button type="button">Quais modalidades vocês têm?</button>
     </div>
     <form id="form">
-      <input id="text" autocomplete="off" placeholder="Digite sua mensagem..." maxlength="1000" aria-label="Mensagem">
+      <textarea id="text" rows="1" placeholder="Digite sua mensagem..." title="Enter envia · Shift + Enter pula linha" maxlength="1000" aria-label="Mensagem"></textarea>
       <button id="btn" type="submit">Enviar</button>
     </form>
     <div class="note">A Sonia é uma inteligência artificial e suas respostas podem conter imprecisões.</div>
@@ -87,6 +146,7 @@
   const input = document.getElementById('text');
   const btn = document.getElementById('btn');
   const statusEl = document.getElementById('status');
+  const stageEl = document.getElementById('stage');
   const messages = []; // { role: 'user' | 'sonia', text }
 
   // ---------- voz da Sonia (síntese de voz do navegador) ----------
@@ -101,7 +161,8 @@
   if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
   function speakingState(on) {
     if (window.sonia) window.sonia.setSpeaking(on);
-    statusEl.innerHTML = on ? '<b>Sonia está falando…</b>' : 'Arraste para girar · clique duas vezes para mudar o zoom';
+    stageEl.classList.toggle('speaking', on);
+    statusEl.textContent = on ? 'Sonia está falando…' : 'Online · pronta para ajudar';
   }
   function speak(text) {
     if (!synth || !voiceOn) return;
@@ -132,6 +193,26 @@
     return div;
   }
 
+  function addCard(c) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    const h3 = document.createElement('h3'); h3.textContent = c.titulo; div.appendChild(h3);
+    if (c.linhas && c.linhas.length) {
+      const ul = document.createElement('ul');
+      c.linhas.forEach((l) => { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); });
+      div.appendChild(ul);
+    }
+    if (c.embed && /^[\w-]{6,20}$/.test(c.embed)) {
+      const f = document.createElement('iframe');
+      f.src = 'https://www.youtube-nocookie.com/embed/' + c.embed; f.allowFullscreen = true; f.title = c.titulo; div.appendChild(f);
+    }
+    if (c.link && /^https:\/\//.test(c.link.url)) {
+      const a = document.createElement('a'); a.className = 'btn'; a.href = c.link.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = c.link.texto; div.appendChild(a);
+    }
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
   async function send(text) {
     document.getElementById('chips').style.display = 'none';
     if (synth) { synth.cancel(); speakingState(false); }
@@ -150,6 +231,7 @@
       const reply = data.reply || 'Ops, não consegui responder agora.';
       messages.push({ role: 'sonia', text: reply });
       add('sonia', reply);
+      (data.cards || []).forEach(addCard);
       speak(reply);
     } catch (e) {
       typing.remove();
@@ -163,8 +245,14 @@
     e.preventDefault();
     const text = input.value.trim();
     if (!text || btn.disabled) return;
-    input.value = '';
+    input.value = ''; autoGrow();
     send(text);
+  });
+  // Enter envia; Shift + Enter quebra a linha; o campo cresce conforme o texto
+  const autoGrow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; };
+  input.addEventListener('input', autoGrow);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
   });
   document.querySelectorAll('#chips button').forEach((b) => b.addEventListener('click', () => send(b.textContent)));
 
