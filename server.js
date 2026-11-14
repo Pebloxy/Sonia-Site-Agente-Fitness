@@ -19,11 +19,13 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.GEMINI_API_KEY || '';
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const PUBLIC = path.join(__dirname, 'public');
+const TTS_URL = process.env.TTS_URL || 'http://127.0.0.1:8880';   // servidor de voz (tts/kokoro_server.py), opcional
+const TTS_VOICE = process.env.TTS_VOICE || 'pf_dora';
 
 const MAX_MSG = 1000;      // caracteres por mensagem
 const MAX_HISTORY = 20;    // mensagens enviadas ao Gemini
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.wav': 'audio/wav' };
 
 function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.writeHead(status, { 'Content-Type': type });
@@ -105,6 +107,31 @@ const server = http.createServer(async (req, res) => {
           : 'Ops, tive um probleminha aqui. Tenta de novo em instantes!';
         send(res, 200, { reply: friendly, error: true });
       }
+    });
+    return;
+  }
+
+  // voz da Sonia (Kokoro): o navegador pergunta se está disponível e pede o áudio de cada fala
+  if (req.method === 'GET' && url.pathname === '/api/tts-status') {
+    try {
+      const r = await fetch(`${TTS_URL}/health`, { signal: AbortSignal.timeout(1500) });
+      return send(res, 200, { available: r.ok, voice: TTS_VOICE });
+    } catch (_) { return send(res, 200, { available: false }); }
+  }
+  if (req.method === 'POST' && url.pathname === '/api/tts') {
+    let raw = '';
+    req.on('data', (c) => { raw += c; if (raw.length > 5000) req.destroy(); });
+    req.on('end', async () => {
+      try {
+        const text = String(JSON.parse(raw || '{}').text || '').slice(0, 700).trim();
+        if (!text) return send(res, 400, { error: 'Texto vazio.' });
+        const r = await fetch(`${TTS_URL}/tts`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice: TTS_VOICE }), signal: AbortSignal.timeout(30000),
+        });
+        if (!r.ok) throw new Error('tts ' + r.status);
+        send(res, 200, Buffer.from(await r.arrayBuffer()), 'audio/wav');
+      } catch (_) { send(res, 503, { error: 'Voz indisponível.' }); }
     });
     return;
   }

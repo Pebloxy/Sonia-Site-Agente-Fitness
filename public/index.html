@@ -164,11 +164,18 @@
     stageEl.classList.toggle('speaking', on);
     statusEl.textContent = on ? 'Sonia está falando…' : 'Online · pronta para ajudar';
   }
-  function speak(text) {
-    if (!synth || !voiceOn) return;
+  // voz de IA (Kokoro) quando o servidor de voz estiver ligado; senão, voz do navegador
+  let aiVoice = false, curAudio = null, speakId = 0;
+  fetch('/api/tts-status').then((r) => r.json()).then((d) => { aiVoice = !!d.available; }).catch(() => {});
+  function stopSpeech() {
+    speakId++;
+    if (curAudio) { curAudio.pause(); curAudio = null; }
+    if (synth) synth.cancel();
+    speakingState(false);
+  }
+  function speakBrowser(clean) {
+    if (!synth) return;
     synth.cancel();
-    const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
-    if (!clean) return;
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = 'pt-BR'; if (ptVoice) u.voice = ptVoice;
     u.rate = 1.05; u.pitch = 1.1;
@@ -176,10 +183,33 @@
     u.onend = u.onerror = () => speakingState(false);
     synth.speak(u);
   }
+  async function speak(text) {
+    if (!voiceOn) return;
+    const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
+    if (!clean) return;
+    const id = ++speakId;
+    if (aiVoice) {
+      try {
+        const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: clean }) });
+        if (!r.ok) throw new Error('sem voz');
+        const url = URL.createObjectURL(await r.blob());
+        if (id !== speakId) return;                      // chegou outra mensagem/clique enquanto gerava
+        const a = new Audio(url); curAudio = a;
+        a.onplay = () => speakingState(true);
+        a.onended = a.onerror = () => { speakingState(false); URL.revokeObjectURL(url); if (curAudio === a) curAudio = null; };
+        await a.play();
+        return;
+      } catch (e) {
+        aiVoice = false;                                  // servidor de voz caiu: usa a voz do navegador
+        if (id !== speakId) return;
+      }
+    }
+    speakBrowser(clean);
+  }
   document.getElementById('btn-voice').addEventListener('click', (e) => {
     voiceOn = !voiceOn;
     e.currentTarget.setAttribute('aria-pressed', String(voiceOn));
-    if (!voiceOn && synth) { synth.cancel(); speakingState(false); }
+    if (!voiceOn) stopSpeech();
   });
   document.getElementById('btn-zoom').addEventListener('click', () => window.sonia && window.sonia.toggleZoom());
 
@@ -215,7 +245,7 @@
 
   async function send(text) {
     document.getElementById('chips').style.display = 'none';
-    if (synth) { synth.cancel(); speakingState(false); }
+    stopSpeech();
     messages.push({ role: 'user', text });
     add('user', text);
     btn.disabled = true;

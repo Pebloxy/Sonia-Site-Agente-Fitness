@@ -10,6 +10,14 @@ COMO RODAR NO PC
 
 Nao precisa de "npm install": o projeto nao usa pacotes externos.
 
+VOZ DE IA (OPCIONAL - Kokoro, roda no PC, sem chave)
+Sem isso a Sonia usa a voz do navegador. Para usar a voz de IA:
+1) Instale o Python (3.10 a 3.13, marque "Add Python to PATH") e o espeak-ng (Windows: .msi em github.com/espeak-ng/espeak-ng/releases).
+2) No terminal:  pip install kokoro soundfile
+3) Em OUTRO terminal, na pasta do projeto:  python tts/kokoro_server.py   (a 1a vez baixa o modelo)
+4) Quando aparecer "Voz pronta", abra/recarregue o site. Para trocar a voz: TTS_VOICE no .env (pf_dora, pm_alex, pm_santa).
+Se o servidor de voz nao estiver ligado, a Sonia volta sozinha para a voz do navegador.
+
 DICAS
 - Arraste a Sonia para girar; clique duas vezes (ou no botao Zoom) para mudar o enquadramento.
 - O botao "Voz" liga/desliga a fala da Sonia (usa a voz do proprio navegador; funciona melhor no Chrome ou Edge).
@@ -20,5 +28,6 @@ ARQUIVOS
 - persona.js ....... personalidade e regras da Sonia
 - src/data.js ...... dados FICTICIOS da academia (aluno, rotina, horarios) - e o que um banco de dados vai substituir
 - src/tools.js ..... ferramentas da Sonia e regras de negocio (vagas, 2h para cancelar, check-in)
+- tts/kokoro_server.py  servidor da voz de IA (opcional)
 - test.js .......... testes das regras: node test.js
 - public/ .......... site (index.html, avatar.js, models/sonia.glb, img/academia.jpg)
