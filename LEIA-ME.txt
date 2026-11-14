@@ -10,6 +10,14 @@ COMO RODAR NO PC
 
 Nao precisa de "npm install": o projeto nao usa pacotes externos.
 
+VOZ DA SONIA (3 opcoes; o site escolhe sozinho, nesta ordem)
+1) Kokoro (so no seu PC, sem chave): Python 3.12 + espeak-ng, "py -3.12 -m pip install kokoro soundfile",
+   e em OUTRO terminal: "py -3.12 tts/kokoro_server.py" (a 1a vez baixa o modelo). Troque a voz com TTS_VOICE no .env.
+2) Gemini TTS (funciona online, usa a mesma chave do chat): vem ligado se houver GEMINI_API_KEY. Desligue com GEMINI_TTS=off.
+   Modelo e voz: GEMINI_TTS_MODEL e GEMINI_TTS_VOICE no .env (o nome do modelo pode mudar; confira no Google AI Studio).
+3) Voz do navegador (sempre funciona, e a reserva de tudo): melhor no Edge ou Chrome.
+Se uma voz falhar ou acabar a cota, a Sonia usa a proxima sozinha.
+
 DICAS
 - Arraste a Sonia para girar; clique duas vezes (ou no botao Zoom) para mudar o enquadramento.
 - O botao "Voz" liga/desliga a fala da Sonia (usa a voz do proprio navegador; funciona melhor no Chrome ou Edge).
@@ -20,5 +28,6 @@ ARQUIVOS
 - persona.js ....... personalidade e regras da Sonia
 - src/data.js ...... dados FICTICIOS da academia (aluno, rotina, horarios) - e o que um banco de dados vai substituir
 - src/tools.js ..... ferramentas da Sonia e regras de negocio (vagas, 2h para cancelar, check-in)
+- tts/kokoro_server.py  servidor da voz de IA (opcional)
 - test.js .......... testes das regras: node test.js
 - public/ .......... site (index.html, avatar.js, models/sonia.glb, img/academia.jpg)
