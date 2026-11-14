@@ -3,13 +3,16 @@
 // vista pela MESMA câmera: ao aproximar, afastar ou arrastar, a perspectiva do fundo muda junto (paralaxe real).
 (function () {
   const MODEL_URL = '/models/sonia.glb';
-  const BG_URL = '/img/academia.jpg';
+  const BG_URL = '/img/academia.jpg';             // reserva, se o cenário 3D não carregar
+  const ROOM_URL = '/models/modular_gym.glb';
+  const SONIA_SCALE = 6.2;   // o cenário tem ~0,27 m por unidade (teto de 9 un. ≈ 2,5 m); a Sonia (1 un.) fica com ~1,7 m
+  const ROOM = { x: 8, z: 2, heading: 3 * Math.PI / 2, ready: false };  // ponto da sala onde ela fica e para onde olha
   const BG_DISTANCE = 1.3;   // distância da parede de fundo atrás da Sonia (m)
   const BG_FLOOR_V = 0.80;   // altura (0 topo, 1 base) do ponto da imagem onde os pés da Sonia pisam no chão
   const BG_SHIFT_X = 0.0;    // ajuste horizontal do cenário
   const FOV = 28 * Math.PI / 180;
   const DIST_MAX = 2.55;     // câmera mais afastada (corpo inteiro)
-  const MAX_YAW = 0.35;      // giro máximo da câmera ao arrastar (~28°)
+  const MAX_YAW = 0.3;       // giro máximo da câmera ao arrastar (~28°)
   const canvas = document.getElementById('avatar');
   const gl = canvas.getContext('webgl2', { alpha: true, antialias: true, premultipliedAlpha: false });
 
@@ -48,6 +51,7 @@
       return o;
     },
     rotY(a) { const c = Math.cos(a), s = Math.sin(a), o = M.ident(); o[0] = c; o[2] = -s; o[8] = s; o[10] = c; return o; },
+    scale(k) { const o = M.ident(); o[0] = o[5] = o[10] = k; return o; },
     trans(x, y, z) { const o = M.ident(); o[12] = x; o[13] = y; o[14] = z; return o; },
     lookAt(e, t, up) {
       const z = V.norm(V.sub(e, t)), x = V.norm(V.cross(up, z)), y = V.cross(z, x), o = M.ident();
@@ -141,6 +145,126 @@
     return t;
   }
 
+
+  // ---------- programa do cenário 3D (a academia) ----------
+  const roomProg = program(`#version 300 es
+  in vec3 aPos; in vec3 aNor; in vec2 aUv;
+  uniform mat4 uMVP; uniform mat4 uModel;
+  out vec3 vN; out vec2 vUv; out float vH;
+  void main(){
+    vec4 w = uModel * vec4(aPos,1.0);
+    vN = mat3(uModel) * aNor; vUv = aUv; vH = w.y;
+    gl_Position = uMVP * vec4(aPos,1.0);
+  }`, `#version 300 es
+  precision highp float;
+  in vec3 vN; in vec2 vUv; in float vH;
+  uniform sampler2D uTex; uniform mat3 uRoomRot;
+  out vec4 outColor;
+  void main(){
+    vec3 n = normalize(uRoomRot * vN);
+    if (!gl_FrontFacing) n = -n;
+    vec3 tex = texture(uTex, vUv).rgb;
+    float top = max(n.y, 0.0);
+    float key = max(dot(n, normalize(vec3(0.35, 0.9, 0.45))), 0.0);
+    float side = max(dot(n, normalize(vec3(-0.6, 0.2, 0.7))), 0.0);
+    vec3 light = vec3(0.62,0.58,0.56) + vec3(1.0,0.88,0.72) * (0.55 * key) + vec3(0.9,0.6,0.4) * (0.18 * side) + vec3(0.08,0.07,0.09) * top;
+    outColor = vec4(tex * light, 1.0);
+  }`);
+  const rl = {
+    pos: gl.getAttribLocation(roomProg, 'aPos'), nor: gl.getAttribLocation(roomProg, 'aNor'), uv: gl.getAttribLocation(roomProg, 'aUv'),
+    mvp: gl.getUniformLocation(roomProg, 'uMVP'), model: gl.getUniformLocation(roomProg, 'uModel'),
+    tex: gl.getUniformLocation(roomProg, 'uTex'), rot: gl.getUniformLocation(roomProg, 'uRoomRot'),
+  };
+  let roomParts = [], roomBounds = null;
+
+  // glTF genérico: várias peças, hierarquia de nós, uma textura de cor por material
+  function m4mul(a, b) { return M.mul(a, b); }
+  function nodeMatrix(n) {
+    if (n.matrix) return new Float32Array(n.matrix);
+    const t = n.translation || [0, 0, 0], q = n.rotation || [0, 0, 0, 1], sc = n.scale || [1, 1, 1];
+    const [x, y, z, w] = q, o = M.ident();
+    o[0] = (1 - 2 * (y * y + z * z)) * sc[0]; o[1] = 2 * (x * y + z * w) * sc[0]; o[2] = 2 * (x * z - y * w) * sc[0];
+    o[4] = 2 * (x * y - z * w) * sc[1]; o[5] = (1 - 2 * (x * x + z * z)) * sc[1]; o[6] = 2 * (y * z + x * w) * sc[1];
+    o[8] = 2 * (x * z + y * w) * sc[2]; o[9] = 2 * (y * z - x * w) * sc[2]; o[10] = (1 - 2 * (x * x + y * y)) * sc[2];
+    o[12] = t[0]; o[13] = t[1]; o[14] = t[2];
+    return o;
+  }
+  async function loadRoom(url) {
+    const buf = await (await fetch(url)).arrayBuffer();
+    const dv = new DataView(buf);
+    if (dv.getUint32(0, true) !== 0x46546c67) throw new Error('cenário não é GLB');
+    const jsonLen = dv.getUint32(12, true);
+    const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLen)));
+    const binStart = 20 + jsonLen + 8;
+    const NC = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+    const TY = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5121: Uint8Array };
+    const acc = (i) => {
+      const a = json.accessors[i], v = json.bufferViews[a.bufferView], n = NC[a.type], T = TY[a.componentType];
+      const base = binStart + (v.byteOffset || 0) + (a.byteOffset || 0), es = T.BYTES_PER_ELEMENT, stride = v.byteStride || n * es;
+      const out = new T(a.count * n);
+      if (stride === n * es && base % es === 0) out.set(new T(buf, base, a.count * n));
+      else {
+        const rd = T === Float32Array ? 'getFloat32' : T === Uint32Array ? 'getUint32' : T === Uint16Array ? 'getUint16' : 'getUint8';
+        for (let k = 0; k < a.count; k++) for (let c = 0; c < n; c++) out[k * n + c] = dv[rd](base + k * stride + c * es, true);
+      }
+      return out;
+    };
+    // texturas de cor (decodificadas uma vez)
+    const texCache = new Map();
+    const colorTex = async (matIdx) => {
+      const m = json.materials[matIdx]; const ti = m && m.pbrMetallicRoughness && m.pbrMetallicRoughness.baseColorTexture;
+      if (!ti) return null;
+      const src = json.textures[ti.index].source;
+      if (!texCache.has(src)) {
+        const img = json.images[src], v = json.bufferViews[img.bufferView];
+        const blob = new Blob([new Uint8Array(buf, binStart + (v.byteOffset || 0), v.byteLength)], { type: img.mimeType || 'image/png' });
+        const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
+        const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bmp);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+        if (ext) gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+        texCache.set(src, t);
+      }
+      return texCache.get(src);
+    };
+    const white = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, white);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 200, 200, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    const parts = [], mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+    const jobs = [];
+    const walk = (ni, parent) => {
+      const n = json.nodes[ni], w = m4mul(parent, nodeMatrix(n));
+      if (n.mesh !== undefined) jobs.push({ mesh: json.meshes[n.mesh], world: w });
+      (n.children || []).forEach((c) => walk(c, w));
+    };
+    json.scenes[json.scene || 0].nodes.forEach((ni) => walk(ni, M.ident()));
+    for (const job of jobs) for (const p of job.mesh.primitives) {
+      if ((p.mode !== undefined && p.mode !== 4) || p.attributes.POSITION === undefined) continue;
+      const pos = acc(p.attributes.POSITION), uv = p.attributes.TEXCOORD_0 !== undefined ? acc(p.attributes.TEXCOORD_0) : new Float32Array(pos.length / 3 * 2);
+      const idx = p.indices !== undefined ? acc(p.indices) : Uint32Array.from({ length: pos.length / 3 }, (_, i) => i);
+      const nor = p.attributes.NORMAL !== undefined ? acc(p.attributes.NORMAL) : normals(pos, idx);
+      const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+      const bind = (data, l, size) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); };
+      bind(pos, rl.pos, 3); bind(nor, rl.nor, 3); bind(uv, rl.uv, 2);
+      const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+      parts.push({ vao, count: idx.length, world: job.world, tex: (await colorTex(p.material)) || white });
+      // limites no espaço do cenário
+      const W = job.world, pa = json.accessors[p.attributes.POSITION];
+      for (const cx of [pa.min[0], pa.max[0]]) for (const cy of [pa.min[1], pa.max[1]]) for (const cz of [pa.min[2], pa.max[2]]) {
+        const X = W[0] * cx + W[4] * cy + W[8] * cz + W[12], Y = W[1] * cx + W[5] * cy + W[9] * cz + W[13], Z = W[2] * cx + W[6] * cy + W[10] * cz + W[14];
+        mn[0] = Math.min(mn[0], X); mn[1] = Math.min(mn[1], Y); mn[2] = Math.min(mn[2], Z); mx[0] = Math.max(mx[0], X); mx[1] = Math.max(mx[1], Y); mx[2] = Math.max(mx[2], Z);
+      }
+    }
+    return { parts, bounds: { min: mn, max: mx } };
+  }
+
   // ---------- leitura do GLB ----------
   async function loadGLB(url) {
     const buf = await (await fetch(url)).arrayBuffer();
@@ -228,14 +352,15 @@
     // câmera: busto (zoom=0) ou corpo inteiro (zoom=1); arrastar orbita a câmera em volta da Sonia
     const targetY = lerp(0.20, 0.0, state.zoom), dist = lerp(1.25, DIST_MAX, state.zoom);
     const asp = canvas.width / canvas.height;
-    const proj = M.persp(FOV, asp, 0.1, 20);
+    const proj = M.persp(FOV, asp, 0.1, 80);
     const a = Math.max(-MAX_YAW, Math.min(MAX_YAW, state.yaw));
-    const eye = [dist * Math.sin(a), targetY + 0.02, dist * Math.cos(a)];
+    const up = lerp(0.14, 0.42, state.zoom);   // câmera mais alta (olha um pouco para baixo), passando por cima dos equipamentos
+    const eye = [dist * Math.sin(a), targetY + up, dist * Math.cos(a)];
     const view = M.lookAt(eye, [0, targetY, 0], [0, 1, 0]);
     const vp = M.mul(proj, view);
 
     // ---- cenário: plano grande atrás da Sonia, dimensionado para cobrir qualquer enquadramento ----
-    if (bgTex) {
+    if (!ROOM.ready && bgTex) {
       const farD = DIST_MAX + BG_DISTANCE;
       const visH = 2 * farD * Math.tan(FOV / 2);
       const needH = visH * 1.25;
@@ -253,6 +378,22 @@
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.uniform1i(bgLoc.tex, 0);
       gl.bindVertexArray(bgVao);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // ---- cenário 3D: a sala inteira, posta em volta da Sonia (escala 1/SONIA_SCALE, pés dela no chão da sala) ----
+    if (ROOM.ready) {
+      const sceneM = M.mul(M.trans(0, -0.5, 0), M.mul(M.scale(1 / SONIA_SCALE), M.mul(M.rotY(ROOM.heading), M.trans(-ROOM.x, 0, -ROOM.z))));
+      const rr = M.rotY(ROOM.heading), rot3 = new Float32Array([rr[0], rr[1], rr[2], rr[4], rr[5], rr[6], rr[8], rr[9], rr[10]]);
+      gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);   // paredes de fora ficam invisíveis, deixando a câmera "atravessar" a parede
+      gl.useProgram(roomProg);
+      gl.uniformMatrix3fv(rl.rot, false, rot3);
+      gl.activeTexture(gl.TEXTURE0); gl.uniform1i(rl.tex, 0);
+      for (const p of roomParts) {
+        const mm = M.mul(sceneM, p.world);
+        gl.uniformMatrix4fv(rl.mvp, false, M.mul(vp, mm)); gl.uniformMatrix4fv(rl.model, false, mm);
+        gl.bindTexture(gl.TEXTURE_2D, p.tex); gl.bindVertexArray(p.vao);
+        gl.drawElements(gl.TRIANGLES, p.count, gl.UNSIGNED_INT, 0);
+      }
     }
 
     // ---- Sonia ----
@@ -282,13 +423,19 @@
     toggleZoom: cycleZoom,
     setLevel(i) { level = i; state.zoomTarget = LEVELS[i]; state.zoom = LEVELS[i]; },   // usado em testes
     setYaw(a) { state.yaw = a; state.yawTarget = a; },                                  // usado em testes
+    setRoom(x, z, h) { ROOM.x = x; ROOM.z = z; ROOM.heading = h; },                       // usado para escolher o ponto
+    room: ROOM,
     ready: false,
   };
 
   const loadBg = fetch(BG_URL).then((r) => r.blob()).then((b) => createImageBitmap(b, { imageOrientation: 'none' }))
     .then((bmp) => { bgTex = makeTexture(bmp); bgAspect = bmp.width / bmp.height; })
     .catch((e) => console.warn('Cenário não carregou:', e));
-  Promise.all([loadGLB(MODEL_URL), loadBg]).then(([m]) => {
+  const loadRoomP = loadRoom(ROOM_URL).then((r) => {
+    roomParts = r.parts; roomBounds = r.bounds; ROOM.bounds = r.bounds;
+    ROOM.ready = true;
+  }).catch((e) => console.warn('Cenário 3D não carregou, usando a foto:', e));
+  Promise.all([loadGLB(MODEL_URL), loadBg, loadRoomP]).then(([m]) => {
     upload(m); window.sonia.ready = true;
     document.getElementById('avatar-loading').hidden = true;
     requestAnimationFrame(frame);
