@@ -7,6 +7,7 @@ const agendamentoRoutes = require('./agendamento.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const academiaRoutes = require('./academia.routes');
 const chatRoutes = require('./chat.routes');
+const ttsRoutes = require('./tts.routes');
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use('/agendamentos', agendamentoRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/academia', academiaRoutes);
 router.use('/chat', chatRoutes);
+router.use('/tts', ttsRoutes);
 
 // Endpoint de status da API
 router.get('/health', (req, res) => {
@@ -29,4 +31,3 @@ router.get('/health', (req, res) => {
 });
 
 module.exports = router;
-

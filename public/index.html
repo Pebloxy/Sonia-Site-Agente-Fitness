@@ -11,7 +11,7 @@
 <body>
 
 <div class="layout">
-  <!-- Palco do Avatar 3D da Sonia -->
+  <!-- Palco do Avatar 3D da Sonia com Cenário da Academia -->
   <section class="stage" aria-label="Visualizador 3D da Sonia">
     <header>
       <div class="header-brand">
@@ -27,7 +27,7 @@
       </div>
     </header>
 
-    <canvas id="avatar" aria-label="Avatar 3D interativo da Sonia. Arraste para girar, clique duas vezes para zoom."></canvas>
+    <canvas id="avatar" aria-label="Avatar 3D interativo da Sonia no cenário da academia. Arraste para girar, clique duas vezes para zoom."></canvas>
     
     <div id="avatar-loading">Carregando a Sonia…</div>
     <div id="avatar-fallback" hidden>
@@ -185,11 +185,6 @@
   </div>
 </div>
 
-<!-- Indicador de Status Offline (RF26) -->
-<div id="offline-badge" class="offline-badge" hidden>
-  📡 Modo Offline Ativado
-</div>
-
 <!-- Modal de Registro e Avaliação de Treino (RF23, RF29) -->
 <div id="modal-treino" class="modal-overlay" hidden>
   <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-treino-title">
@@ -223,6 +218,11 @@
       </div>
     </form>
   </div>
+</div>
+
+<!-- Indicador de Status Offline (RF26) -->
+<div id="offline-badge" class="offline-badge" hidden>
+  📡 Modo Offline Ativado
 </div>
 
 <!-- Scripts da Aplicação -->

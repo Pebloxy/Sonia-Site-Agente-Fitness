@@ -3,11 +3,11 @@ SONIA - Assistente Virtual da Academia (Grupo Scriptum - FATEC Zona Sul)
 
 COMO RODAR O PROJETO:
 1) Certifique-se de ter o Node.js instalado (v18 ou mais recente): https://nodejs.org
-2) Instale as dependencias do projeto:
+2) Instale as dependências do projeto:
    npm install
 3) Configure o arquivo de ambiente:
-   Copie ".env.example" para ".env" e configure sua chave do Gemini e conexao MySQL.
-   *Caso nao configure a chave ou banco agora, a Sonia funciona automaticamente em Modo Teste!*
+   Copie ".env.example" para ".env" e configure sua chave do Gemini e conexão MySQL.
+   *Caso não configure a chave ou banco de imediato, a Sonia funciona automaticamente em Modo Teste!*
 4) Inicie o servidor:
    npm start
 5) Abra no seu navegador:
@@ -17,9 +17,14 @@ COMO EXECUTAR OS TESTES AUTOMATIZADOS:
 No terminal, execute:
    npm test
 
+VOZ DA SONIA (três opções suportadas):
+1) Voz do navegador (Web Speech API nativa, sempre funciona sem dependências adicionais).
+2) edge-tts (voz neural da Microsoft, opcional): requer Python e "pip install edge-tts".
+3) Gemini TTS (opcional via API do Google): configurável com GEMINI_TTS=on no .env.
+
 RECURSOS PRINCIPAIS:
-- Chat com IA e Avatar 3D interativo (arraste para girar, duplo clique para zoom).
-- Nova identidade visual fitness Preto e Laranja.
-- Acessibilidade: Interacao por Voz (TTS e Microfone) e Ajuste de Fonte (A- / A+).
-- Modo Offline com Service Worker e sincronizacao automatica ao reconectar.
-- Acompanhamento de treinos, check-in, agendamentos e exportacao CSV.
+- Chat com IA e Avatar 3D interativo dentro do cenário da academia (modular_gym.glb).
+- Identidade visual fitness Preto e Laranja.
+- Acessibilidade: Interação por Voz (TTS e Microfone STT) e Ajuste de Fonte (A- / A+).
+- Modo Offline com Service Worker e sincronização automática ao reconectar.
+- Acompanhamento de rotinas, check-in, agendamentos e exportação de dados em CSV.

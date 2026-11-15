@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const app = require('./src/app');
 const { testConnection } = require('./src/config/database');
+const { pyEdge } = require('./src/services/tts.service');
 
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -15,6 +16,11 @@ async function iniciarServidor() {
   console.log(`📡 Porta: ${PORT}`);
   console.log(`🧠 Modelo Gemini: ${MODEL}`);
   console.log(`🔑 Chave Gemini: ${API_KEY && API_KEY !== 'chave_exemplo' ? 'CONFIGURADA' : 'MODO TESTE (Sem chave configurada)'}`);
+
+  // Inicia worker opcional de voz se Python e edge-tts estiverem disponíveis
+  pyEdge().then(w => {
+    console.log(w ? '🔊 Voz neural (edge-tts): ativa' : '🔊 Voz neural (edge-tts): indisponível (usando síntese do navegador)');
+  }).catch(() => {});
 
   // Testa conexão com o MySQL (não bloqueia caso MySQL não esteja rodando ainda)
   await testConnection();
