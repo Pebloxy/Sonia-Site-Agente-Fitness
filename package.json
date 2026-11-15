@@ -1,8 +1,23 @@
 {
   "name": "sonia",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Sonia - assistente virtual para academia (Grupo Scriptum)",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" }
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/full_system.test.js && node tests/gemini.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.16.1"
+  }
 }

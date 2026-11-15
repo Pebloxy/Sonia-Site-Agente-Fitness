@@ -1,0 +1,660 @@
+/* public/css/style.css */
+/* Identidade visual da Sonia: Preto e Laranja */
+
+:root {
+  --bg-dark: #0c0d10;
+  --bg-stage: radial-gradient(120% 90% at 50% 25%, #231b14 0%, #161311 45%, #0c0d10 100%);
+  --panel-bg: #14171d;
+  --panel-card: #1c2028;
+  --panel-border: #2a2f3b;
+  
+  --primary-orange: #ff7a00;
+  --primary-hover: #ff9124;
+  --primary-glow: rgba(255, 122, 0, 0.25);
+  
+  --text-main: #f3f5f8;
+  --text-muted: #9aa3b2;
+  --text-dim: #6c7687;
+  
+  --msg-user: #ff7a00;
+  --msg-user-text: #ffffff;
+  --msg-sonia: #1c2028;
+  --msg-sonia-border: #2a2f3b;
+  
+  --status-green: #10b981;
+  --status-red: #ef4444;
+
+  --font-base: 15px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-size: var(--font-base);
+  overflow: hidden;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Layout Principal */
+.layout {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(320px, 42%) 1fr;
+}
+
+/* Lado da Personagem (Stage 3D) */
+.stage {
+  position: relative;
+  background: var(--bg-stage);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--panel-border);
+}
+
+.stage header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(12,13,16,0.85) 0%, rgba(12,13,16,0) 100%);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-orange) 0%, #d85c00 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.brand-text h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.brand-text small {
+  color: var(--primary-orange);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Canvas do Avatar */
+#avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+#avatar:active {
+  cursor: grabbing;
+}
+
+#avatar-loading, #avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px;
+}
+
+#avatar-fallback .big-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--panel-card);
+  border: 2px solid var(--primary-orange);
+  color: var(--primary-orange);
+  display: grid;
+  place-items: center;
+  font-size: 54px;
+  font-weight: bold;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+/* Ferramentas do Stage */
+.stage-tools {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+}
+
+.btn-tool {
+  background: rgba(28, 32, 40, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--text-main);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-tool:hover {
+  border-color: var(--primary-orange);
+  color: var(--primary-orange);
+}
+
+.stage-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  z-index: 2;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+.stage-status b {
+  color: var(--primary-orange);
+}
+
+/* Coluna de Chat e Aplicação */
+.app-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  min-width: 0;
+  height: 100vh;
+}
+
+/* Barra Superior com Navegação e Perfil */
+.top-nav {
+  padding: 12px 20px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.nav-tab {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  color: var(--text-main);
+  background: var(--panel-card);
+}
+
+.nav-tab.active {
+  color: var(--primary-orange);
+  background: rgba(255, 122, 0, 0.1);
+  border-color: var(--primary-orange);
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Botões de Acessibilidade (A- / A+) (RF28) */
+.accessibility-ctrl {
+  display: flex;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.btn-font {
+  background: var(--panel-card);
+  color: var(--text-main);
+  border: none;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-font:hover {
+  background: var(--primary-orange);
+  color: #fff;
+}
+
+.btn-login {
+  background: var(--primary-orange);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-login:hover {
+  background: var(--primary-hover);
+}
+
+/* Conteúdo das Views */
+.view-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.view-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.view-panel.active {
+  display: flex;
+}
+
+/* Estilos do Chat */
+#chat-view {
+  padding: 0;
+  display: none;
+  flex-direction: column;
+}
+
+#chat-view.active {
+  display: flex;
+}
+
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: var(--msg-user);
+  color: var(--msg-user-text);
+  border-bottom-right-radius: 4px;
+}
+
+.msg.sonia {
+  align-self: flex-start;
+  background: var(--msg-sonia);
+  border: 1px solid var(--msg-sonia-border);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+
+.msg.typing {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Chips de Ação Rápida */
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px 12px;
+  background: var(--panel-bg);
+}
+
+.chip-btn {
+  background: var(--panel-card);
+  color: var(--text-main);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip-btn:hover {
+  border-color: var(--primary-orange);
+  color: var(--primary-orange);
+}
+
+/* Barra de Entrada do Chat */
+.chat-input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--panel-card);
+  border-top: 1px solid var(--panel-border);
+  align-items: center;
+}
+
+.input-field {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 24px;
+  border: 1px solid var(--panel-border);
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  border-color: var(--primary-orange);
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: var(--bg-dark);
+  color: var(--text-main);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  border-color: var(--primary-orange);
+  color: var(--primary-orange);
+}
+
+.btn-icon.active {
+  background: var(--primary-orange);
+  color: #fff;
+  border-color: var(--primary-orange);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 122, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 122, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 122, 0, 0); }
+}
+
+.btn-send {
+  padding: 0 22px;
+  height: 44px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--primary-orange);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-send:hover {
+  background: var(--primary-hover);
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.footer-disclaimer {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  padding: 6px 16px 8px;
+  background: var(--panel-card);
+}
+
+/* Cards e Elementos das Telas de Rotina/Dashboard */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.card {
+  background: var(--panel-card);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card h3 {
+  font-size: 1.05rem;
+  color: var(--primary-orange);
+}
+
+.card p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.card-action-btn {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--primary-orange);
+  border: 1px solid var(--primary-orange);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.card-action-btn:hover {
+  background: var(--primary-orange);
+  color: #fff;
+}
+
+/* Modais (Login, Consentimento LGPD, etc.) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal-dialog {
+  background: var(--panel-card);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.form-control {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--primary-orange);
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary-orange);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Indicador de Status Offline */
+.offline-badge {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #b91c1c;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Responsividade Mobile */
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 35vh 1fr;
+  }
+  .stage {
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .app-col {
+    height: auto;
+    min-height: 0;
+  }
+}
+

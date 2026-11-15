@@ -1,0 +1,17 @@
+{
+  "name": "Sonia – Assistente Virtual para Academia",
+  "short_name": "Sonia",
+  "description": "Assistente inteligente para acompanhamento de treinos e rotinas na academia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0d10",
+  "theme_color": "#ff7a00",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
+

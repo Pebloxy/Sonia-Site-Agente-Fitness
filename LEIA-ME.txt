@@ -1,16 +1,25 @@
-SONIA - Assistente Virtual da Academia (Grupo Scriptum)
+SONIA - Assistente Virtual da Academia (Grupo Scriptum - FATEC Zona Sul)
+=============================================================================
 
-COMO RODAR NO PC
-1) Instale o Node.js (versao 18 ou mais nova): https://nodejs.org
-2) Copie o arquivo ".env.example" para ".env" e coloque a sua chave do Gemini
-   (gratuita, em https://aistudio.google.com). Sem chave, a Sonia responde so uma mensagem de teste.
-   Se o Gemini reclamar do modelo, troque GEMINI_MODEL no .env pelo nome atual do modelo gratuito.
-3) Abra o terminal na pasta do projeto e rode:  node server.js
-4) Abra no navegador:  http://localhost:3000
+COMO RODAR O PROJETO:
+1) Certifique-se de ter o Node.js instalado (v18 ou mais recente): https://nodejs.org
+2) Instale as dependencias do projeto:
+   npm install
+3) Configure o arquivo de ambiente:
+   Copie ".env.example" para ".env" e configure sua chave do Gemini e conexao MySQL.
+   *Caso nao configure a chave ou banco agora, a Sonia funciona automaticamente em Modo Teste!*
+4) Inicie o servidor:
+   npm start
+5) Abra no seu navegador:
+   http://localhost:3000
 
-Nao precisa de "npm install": o projeto nao usa pacotes externos.
+COMO EXECUTAR OS TESTES AUTOMATIZADOS:
+No terminal, execute:
+   npm test
 
-DICAS
-- Arraste a Sonia para girar; clique duas vezes (ou no botao Zoom) para mudar o enquadramento.
-- O botao "Voz" liga/desliga a fala da Sonia (usa a voz do proprio navegador; funciona melhor no Chrome ou Edge).
-- A chave do Gemini fica so no servidor (.env). Nunca envie o .env para o GitHub.
+RECURSOS PRINCIPAIS:
+- Chat com IA e Avatar 3D interativo (arraste para girar, duplo clique para zoom).
+- Nova identidade visual fitness Preto e Laranja.
+- Acessibilidade: Interacao por Voz (TTS e Microfone) e Ajuste de Fonte (A- / A+).
+- Modo Offline com Service Worker e sincronizacao automatica ao reconectar.
+- Acompanhamento de treinos, check-in, agendamentos e exportacao CSV.
