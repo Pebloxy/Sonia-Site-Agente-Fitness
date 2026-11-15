@@ -23,7 +23,12 @@ const PUBLIC = path.join(__dirname, 'public');
 const GEMINI_BASE = process.env.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
 const GEMINI_TTS_VOICE = process.env.GEMINI_TTS_VOICE || 'Kore';
-const GEMINI_TTS_ON = !!API_KEY && (process.env.GEMINI_TTS || 'on').toLowerCase() !== 'off';
+const GEMINI_TTS_ON = !!API_KEY && (process.env.GEMINI_TTS || 'off').toLowerCase() === 'on';   // desligado por padrão (cota grátis é de 10 pedidos/dia)
+// Voz neural da Microsoft (edge-tts): grátis, sem chave. Precisa de Python + "pip install edge-tts" (opcional)
+const EDGE_TTS_ON = (process.env.EDGE_TTS || 'on').toLowerCase() !== 'off';
+const EDGE_VOICE = process.env.EDGE_TTS_VOICE || 'pt-BR-FranciscaNeural';   // outra: pt-BR-AntonioNeural, pt-BR-ThalitaNeural
+const EDGE_RATE = process.env.EDGE_TTS_RATE || '+5%';
+const EDGE_PITCH = process.env.EDGE_TTS_PITCH || '+0Hz';
 
 const MAX_MSG = 1000;      // caracteres por mensagem
 const MAX_HISTORY = 20;    // mensagens enviadas ao Gemini
@@ -97,6 +102,64 @@ function pcmToWav(pcm, rate = 24000) {
   return Buffer.concat([h, pcm]);
 }
 
+// edge-tts: o server.js abre sozinho um ajudante em Python (tts/edge_worker.py) e o deixa rodando,
+// assim cada fala não precisa abrir o Python de novo. Precisa de Python + "pip install edge-tts" (opcional).
+const { spawn } = require('child_process');
+const PY_CANDIDATES = process.env.PYTHON_CMD
+  ? [process.env.PYTHON_CMD.split(' ').filter(Boolean)]
+  : (process.platform === 'win32' ? [['py', '-3.12'], ['py', '-3'], ['python']] : [['python3'], ['python']]);
+const WORKER = path.join(__dirname, 'tts', 'edge_worker.py');
+let worker = null, workerStarting = null, reqId = 0;
+const pending = new Map();
+
+function failAll(msg) { for (const [, p] of pending) { clearTimeout(p.timer); p.reject(new Error(msg)); } pending.clear(); }
+
+function startWorker(cmd) {
+  return new Promise((resolve) => {
+    let buf = '', ready = false;
+    const p = spawn(cmd[0], [...cmd.slice(1), WORKER], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
+    const giveUp = setTimeout(() => { if (!ready) { p.kill(); resolve(null); } }, 10000);
+    p.stdin.on('error', () => {});
+    p.on('error', () => { clearTimeout(giveUp); if (!ready) resolve(null); });
+    p.on('close', () => { clearTimeout(giveUp); if (worker === p) { worker = null; workerStarting = null; } failAll('ajudante de voz parou'); if (!ready) resolve(null); });
+    p.stdout.setEncoding('utf8');
+    p.stdout.on('data', (d) => {
+      buf += d; let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let m; try { m = JSON.parse(line); } catch (_) { continue; }
+        if (m.ready === true && !ready) { ready = true; clearTimeout(giveUp); resolve(p); }
+        else if (m.id !== undefined && pending.has(m.id)) {
+          const q = pending.get(m.id); pending.delete(m.id); clearTimeout(q.timer);
+          m.ok ? q.resolve(Buffer.from(m.b64, 'base64')) : q.reject(new Error(m.error || 'falha'));
+        }
+      }
+    });
+  });
+}
+function pyEdge() {
+  if (!EDGE_TTS_ON) return Promise.resolve(null);
+  if (worker) return Promise.resolve(worker);
+  if (!workerStarting) {
+    workerStarting = (async () => {
+      for (const c of PY_CANDIDATES) { const p = await startWorker(c); if (p) { worker = p; return p; } }
+      return null;
+    })().then((p) => { if (!p) setTimeout(() => { workerStarting = null; }, 60000); return p; });   // sem Python: tenta de novo só em 1 min
+  }
+  return workerStarting;
+}
+async function edgeTts(text) {
+  const w = await pyEdge();
+  if (!w) throw new Error('edge-tts (Python) não encontrado');
+  return new Promise((resolve, reject) => {
+    const id = ++reqId;
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error('tempo esgotado')); }, 20000);
+    pending.set(id, { resolve, reject, timer });
+    w.stdin.write(JSON.stringify({ id, text, voice: EDGE_VOICE, rate: EDGE_RATE, pitch: EDGE_PITCH }) + '\n');
+  });
+}
+process.on('exit', () => { if (worker) worker.kill(); });
+
 async function geminiTts(text) {
   const r = await fetch(`${GEMINI_BASE}/models/${GEMINI_TTS_MODEL}:generateContent`, {
     method: 'POST',
@@ -143,7 +206,8 @@ const server = http.createServer(async (req, res) => {
 
   // voz da Sonia (Gemini TTS): o navegador pergunta se está disponível e pede o áudio de cada fala
   if (req.method === 'GET' && url.pathname === '/api/tts-status') {
-    return send(res, 200, { available: GEMINI_TTS_ON, engine: GEMINI_TTS_ON ? 'gemini' : 'none' });
+    const edge = !!(await pyEdge());
+    return send(res, 200, { available: edge || GEMINI_TTS_ON, engine: edge ? 'edge' : (GEMINI_TTS_ON ? 'gemini' : 'none') });
   }
   if (req.method === 'POST' && url.pathname === '/api/tts') {
     let raw = '';
@@ -152,6 +216,8 @@ const server = http.createServer(async (req, res) => {
       try {
         const text = String(JSON.parse(raw || '{}').text || '').slice(0, 700).trim();
         if (!text) return send(res, 400, { error: 'Texto vazio.' });
+        try { return send(res, 200, await edgeTts(text), 'audio/mpeg'); }
+        catch (e) { if (EDGE_TTS_ON) console.error('Edge TTS:', e.message); }
         if (!GEMINI_TTS_ON) throw new Error('sem-voz');
         send(res, 200, await geminiTts(text), 'audio/wav');
       } catch (_) { send(res, 503, { error: 'Voz indisponível.' }); }
@@ -177,5 +243,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
+  pyEdge().then((w) => console.log(w ? 'Voz neural (edge-tts): pronta' : 'Voz neural (edge-tts): indisponível, usando a voz do navegador'));
   console.log(`Sonia no ar: http://localhost:${PORT}  (modelo: ${MODEL}, chave: ${API_KEY ? 'ok' : 'FALTANDO'})`);
 });

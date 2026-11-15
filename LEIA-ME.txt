@@ -8,13 +8,16 @@ COMO RODAR NO PC
 3) Abra o terminal na pasta do projeto e rode:  node server.js
 4) Abra no navegador:  http://localhost:3000
 
-Nao precisa de "npm install": o projeto nao usa pacotes externos.
+Nao precisa de "npm install": o projeto nao usa pacotes do Node.
 
-VOZ DA SONIA (o site escolhe sozinho)
-1) Gemini TTS (voz de IA, usa a mesma chave do chat): vem ligado se houver GEMINI_API_KEY. Desligue com GEMINI_TTS=off.
-   Modelo e voz: GEMINI_TTS_MODEL e GEMINI_TTS_VOICE no .env (o nome do modelo pode mudar; confira no Google AI Studio).
-2) Voz do navegador (sempre funciona, e a reserva): melhor no Edge ou Chrome.
-Se a voz do Gemini falhar ou acabar a cota, a Sonia usa a voz do navegador sozinha.
+VOZ DA SONIA (o site escolhe sozinho, nesta ordem)
+1) edge-tts (voz neural da Microsoft, gratis e sem chave): precisa de Python (3.10 a 3.13) e de UMA vez:  py -3.12 -m pip install edge-tts
+   (no Mac/Linux:  python3 -m pip install edge-tts). Troque a voz com EDGE_TTS_VOICE no .env (pt-BR-FranciscaNeural,
+   pt-BR-AntonioNeural, pt-BR-ThalitaNeural). Desligue com EDGE_TTS=off. Se o Python for outro, use PYTHON_CMD no .env.
+   O server.js abre sozinho o ajudante tts/edge_worker.py (nao precisa de outro terminal).
+   E um servico nao oficial da Microsoft: pode ficar lento ou parar; nesse caso cai na voz do navegador.
+2) Gemini TTS (opcional, desligado): GEMINI_TTS=on. O plano gratis permite so ~10 falas por dia.
+3) Voz do navegador (sempre funciona, e a reserva): melhor no Edge ou Chrome.
 
 DICAS
 - Arraste a Sonia para girar; clique duas vezes (ou no botao Zoom) para mudar o enquadramento.
@@ -26,5 +29,6 @@ ARQUIVOS
 - persona.js ....... personalidade e regras da Sonia
 - src/data.js ...... dados FICTICIOS da academia (aluno, rotina, horarios) - e o que um banco de dados vai substituir
 - src/tools.js ..... ferramentas da Sonia e regras de negocio (vagas, 2h para cancelar, check-in)
+- tts/edge_worker.py .. ajudante da voz neural (aberto pelo server.js)
 - test.js .......... testes das regras: node test.js
 - public/ .......... site (index.html, avatar.js, models/sonia.glb, img/academia.jpg)
