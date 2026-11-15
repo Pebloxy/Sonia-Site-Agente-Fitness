@@ -19,8 +19,6 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.GEMINI_API_KEY || '';
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const PUBLIC = path.join(__dirname, 'public');
-const TTS_URL = process.env.TTS_URL || 'http://127.0.0.1:8880';   // servidor de voz (tts/kokoro_server.py), opcional
-const TTS_VOICE = process.env.TTS_VOICE || 'pf_dora';
 // Voz de IA do Gemini (usa a mesma chave do chat). Desligue com GEMINI_TTS=off
 const GEMINI_BASE = process.env.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
@@ -117,10 +115,6 @@ async function geminiTts(text) {
   return pcmToWav(Buffer.from(inline.data, 'base64'));
 }
 
-async function kokoroUp() {
-  try { return (await fetch(`${TTS_URL}/health`, { signal: AbortSignal.timeout(1000) })).ok; } catch (_) { return false; }
-}
-
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
 
@@ -147,10 +141,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // voz da Sonia (Kokoro): o navegador pergunta se está disponível e pede o áudio de cada fala
+  // voz da Sonia (Gemini TTS): o navegador pergunta se está disponível e pede o áudio de cada fala
   if (req.method === 'GET' && url.pathname === '/api/tts-status') {
-    const k = await kokoroUp();
-    return send(res, 200, { available: k || GEMINI_TTS_ON, engine: k ? 'kokoro' : (GEMINI_TTS_ON ? 'gemini' : 'none') });
+    return send(res, 200, { available: GEMINI_TTS_ON, engine: GEMINI_TTS_ON ? 'gemini' : 'none' });
   }
   if (req.method === 'POST' && url.pathname === '/api/tts') {
     let raw = '';
@@ -159,13 +152,6 @@ const server = http.createServer(async (req, res) => {
       try {
         const text = String(JSON.parse(raw || '{}').text || '').slice(0, 700).trim();
         if (!text) return send(res, 400, { error: 'Texto vazio.' });
-        if (await kokoroUp()) {
-          const r = await fetch(`${TTS_URL}/tts`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, voice: TTS_VOICE }), signal: AbortSignal.timeout(30000),
-          });
-          if (r.ok) return send(res, 200, Buffer.from(await r.arrayBuffer()), 'audio/wav');
-        }
         if (!GEMINI_TTS_ON) throw new Error('sem-voz');
         send(res, 200, await geminiTts(text), 'audio/wav');
       } catch (_) { send(res, 503, { error: 'Voz indisponível.' }); }

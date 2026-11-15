@@ -164,11 +164,19 @@
     stageEl.classList.toggle('speaking', on);
     statusEl.textContent = on ? 'Sonia está falando…' : 'Online · pronta para ajudar';
   }
-  function speak(text) {
-    if (!synth || !voiceOn) return;
+  // voz de IA (Kokoro) quando o servidor de voz estiver ligado; senão, voz do navegador
+  let aiVoice = false, curAudio = null, curDone = null, speakId = 0;
+  fetch('/api/tts-status').then((r) => r.json()).then((d) => { aiVoice = !!d.available; }).catch(() => {});
+  function stopSpeech() {
+    speakId++;
+    if (curAudio) { curAudio.pause(); curAudio = null; }
+    if (curDone) { curDone(); curDone = null; }
+    if (synth) synth.cancel();
+    speakingState(false);
+  }
+  function speakBrowser(clean) {
+    if (!synth) return;
     synth.cancel();
-    const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
-    if (!clean) return;
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = 'pt-BR'; if (ptVoice) u.voice = ptVoice;
     u.rate = 1.05; u.pitch = 1.1;
@@ -176,10 +184,57 @@
     u.onend = u.onerror = () => speakingState(false);
     synth.speak(u);
   }
+  // divide em frases (juntando as muito curtas) para tocar a 1ª logo e gerar as outras enquanto ela fala
+  function splitSentences(t) {
+    const parts = t.split(/(?<=[.!?…])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+    const out = [];
+    for (const p of parts) {
+      if (out.length && out[out.length - 1].length < 20) out[out.length - 1] += ' ' + p; else out.push(p);
+    }
+    if (out.length > 1 && out[out.length - 1].length < 15) out[out.length - 2] += ' ' + out.pop();
+    return out.slice(0, 8);
+  }
+  const fetchAudio = (t) => fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t }) })
+    .then((r) => { if (!r.ok) throw new Error('sem voz'); return r.blob(); }).then((b) => URL.createObjectURL(b));
+  async function speak(text) {
+    if (!voiceOn) return;
+    const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
+    if (!clean) return;
+    const id = ++speakId;
+    if (aiVoice) {
+      const chunks = splitSentences(clean);
+      let next = fetchAudio(chunks[0]), i = 0;
+      try {
+        for (; i < chunks.length; i++) {
+          const url = await next;
+          if (id !== speakId) { URL.revokeObjectURL(url); return; }   // chegou outra mensagem/clique enquanto gerava
+          if (i + 1 < chunks.length) { next = fetchAudio(chunks[i + 1]); next.catch(() => {}); }   // já gera a próxima frase
+          const a = new Audio(url); curAudio = a;
+          await new Promise((resolve, reject) => {
+            curDone = resolve;
+            a.onplay = () => speakingState(true);
+            a.onended = resolve; a.onerror = () => reject(new Error('áudio'));
+            a.play().catch(reject);
+          });
+          URL.revokeObjectURL(url); curDone = null;
+          if (id !== speakId) return;
+        }
+        speakingState(false); curAudio = null;
+        return;
+      } catch (e) {
+        aiVoice = false;                                  // voz de IA falhou: o resto da fala sai na voz do navegador
+        curAudio = null; curDone = null;
+        if (id !== speakId) return;
+        speakBrowser(chunks.slice(i).join(' '));
+        return;
+      }
+    }
+    speakBrowser(clean);
+  }
   document.getElementById('btn-voice').addEventListener('click', (e) => {
     voiceOn = !voiceOn;
     e.currentTarget.setAttribute('aria-pressed', String(voiceOn));
-    if (!voiceOn && synth) { synth.cancel(); speakingState(false); }
+    if (!voiceOn) stopSpeech();
   });
   document.getElementById('btn-zoom').addEventListener('click', () => window.sonia && window.sonia.toggleZoom());
 
@@ -215,7 +270,7 @@
 
   async function send(text) {
     document.getElementById('chips').style.display = 'none';
-    if (synth) { synth.cancel(); speakingState(false); }
+    stopSpeech();
     messages.push({ role: 'user', text });
     add('user', text);
     btn.disabled = true;
