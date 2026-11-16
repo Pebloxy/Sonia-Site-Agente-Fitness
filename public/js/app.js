@@ -94,14 +94,14 @@ const App = {
       synth.onvoiceschanged = pickVoice;
     }
 
+    // Voz neural do servidor (edge-tts / Gemini TTS), se estiver disponível
+    fetch('/api/tts/status').then(r => r.json()).then(d => { this.aiVoice = !!d.available; }).catch(() => {});
+
     btnVoice?.addEventListener('click', () => {
       this.voiceEnabled = !this.voiceEnabled;
       btnVoice.classList.toggle('active', this.voiceEnabled);
       btnVoice.textContent = this.voiceEnabled ? '🔊 Voz' : '🔇 Mudo';
-      if (!this.voiceEnabled && synth) {
-        synth.cancel();
-        if (window.sonia?.setSpeaking) window.sonia.setSpeaking(false);
-      }
+      if (!this.voiceEnabled) this.pararFala();
     });
 
     // STT: Reconhecimento de Fala pelo microfone (Web Speech API)
@@ -144,33 +144,101 @@ const App = {
     }
   },
 
-  falar(texto) {
+  // ---- fala da Sonia: voz neural do servidor (frase por frase) com a voz do navegador como reserva ----
+  aiVoice: false,
+  speakId: 0,
+  curAudio: null,
+  curDone: null,
+
+  estadoFalando(on) {
+    if (window.sonia?.setSpeaking) window.sonia.setSpeaking(on);
+    const statusEl = document.getElementById('stage-status');
+    if (statusEl) {
+      if (on) statusEl.innerHTML = '<b>Sonia está falando…</b>';
+      else statusEl.textContent = 'Arraste para girar · clique duas vezes para mudar o zoom';
+    }
+  },
+
+  pararFala() {
+    this.speakId++;
+    if (this.curAudio) { this.curAudio.pause(); this.curAudio = null; }
+    if (this.curDone) { this.curDone(); this.curDone = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    this.estadoFalando(false);
+  },
+
+  // divide em frases (juntando as muito curtas) para tocar a 1ª logo e gerar as outras enquanto ela fala
+  dividirFrases(t) {
+    const partes = t.split(/(?<=[.!?…])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+    const out = [];
+    for (const p of partes) {
+      if (out.length && out[out.length - 1].length < 20) out[out.length - 1] += ' ' + p; else out.push(p);
+    }
+    if (out.length > 1 && out[out.length - 1].length < 15) out[out.length - 2] += ' ' + out.pop();
+    return out.slice(0, 6);
+  },
+
+  buscarAudio(t) {
+    return fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t }) })
+      .then(r => { if (!r.ok) throw new Error('sem voz'); return r.blob(); })
+      .then(b => URL.createObjectURL(b));
+  },
+
+  falarNavegador(limpo) {
     const synth = window.speechSynthesis;
-    if (!synth || !this.voiceEnabled) return;
-
+    if (!synth) return;
     synth.cancel();
-    const limpo = texto.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
-    if (!limpo) return;
-
     const utterance = new SpeechSynthesisUtterance(limpo);
     utterance.lang = 'pt-BR';
     if (this.ptVoice) utterance.voice = this.ptVoice;
     utterance.rate = 1.05;
     utterance.pitch = 1.1;
-
-    utterance.onstart = () => {
-      if (window.sonia?.setSpeaking) window.sonia.setSpeaking(true);
-      const statusEl = document.getElementById('stage-status');
-      if (statusEl) statusEl.innerHTML = '<b>Sonia está falando…</b>';
-    };
-
-    utterance.onend = utterance.onerror = () => {
-      if (window.sonia?.setSpeaking) window.sonia.setSpeaking(false);
-      const statusEl = document.getElementById('stage-status');
-      if (statusEl) statusEl.textContent = 'Arraste para girar · clique duas vezes para mudar o zoom';
-    };
-
+    utterance.onstart = () => this.estadoFalando(true);
+    utterance.onend = utterance.onerror = () => this.estadoFalando(false);
     synth.speak(utterance);
+  },
+
+  async falar(texto) {
+    if (!this.voiceEnabled) return;
+    const limpo = texto.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#`]/g, '').trim();
+    if (!limpo) return;
+
+    const id = ++this.speakId;
+    if (this.aiVoice) {
+      const frases = this.dividirFrases(limpo);
+      let proxima = this.buscarAudio(frases[0]);
+      let i = 0;
+      try {
+        for (; i < frases.length; i++) {
+          const url = await proxima;
+          if (id !== this.speakId) { URL.revokeObjectURL(url); return; } // chegou outra fala enquanto gerava
+          if (i + 1 < frases.length) { proxima = this.buscarAudio(frases[i + 1]); proxima.catch(() => {}); } // já gera a próxima
+          const audio = new Audio(url);
+          this.curAudio = audio;
+          await new Promise((resolve, reject) => {
+            this.curDone = resolve;
+            audio.onplay = () => this.estadoFalando(true);
+            audio.onended = resolve;
+            audio.onerror = () => reject(new Error('áudio'));
+            audio.play().catch(reject);
+          });
+          URL.revokeObjectURL(url);
+          this.curDone = null;
+          if (id !== this.speakId) return;
+        }
+        this.estadoFalando(false);
+        this.curAudio = null;
+        return;
+      } catch (e) {
+        this.aiVoice = false; // voz neural falhou: o resto sai na voz do navegador
+        this.curAudio = null;
+        this.curDone = null;
+        if (id !== this.speakId) return;
+        this.falarNavegador(frases.slice(i).join(' '));
+        return;
+      }
+    }
+    this.falarNavegador(limpo);
   },
 
   // 4. Chat
@@ -593,4 +661,3 @@ const App = {
 
 // Inicializa a aplicação quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => App.init());
-
