@@ -591,54 +591,99 @@ const App = {
     });
   },
 
-  // 8. Carregamento do Dashboard & Exportação CSV (RF24, RF25)
+  // 8. Painel de Evolução (dados fictícios de demonstração) + Exportação CSV (RF24, RF25)
+  svgLinha(valores, cor = 'var(--primary-orange)', w = 120, h = 34) {
+    const max = Math.max(...valores), min = Math.min(...valores), f = max === min ? 1 : max - min;
+    const pts = valores.map((v, i) => [(i / (valores.length - 1)) * w, h - 3 - ((v - min) / f) * (h - 8)]);
+    const linha = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" class="ev-spark" preserveAspectRatio="none"><path d="${linha} L${w} ${h} L0 ${h} Z" fill="${cor}" opacity=".14"/><path d="${linha}" fill="none" stroke="${cor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  },
+
+  svgAnel(feitos, meta, rotulo) {
+    const p = Math.min(feitos / meta, 1), r = 42, c = 2 * Math.PI * r;
+    return `<div class="ev-anel"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" class="ev-anel-fundo"/><circle cx="50" cy="50" r="${r}" class="ev-anel-valor" stroke-dasharray="${(c * p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 50 50)"/></svg><div class="ev-anel-texto"><b>${feitos}<small>/${meta}</small></b><span>${rotulo}</span></div></div>`;
+  },
+
   async carregarDashboard() {
     const container = document.getElementById('dashboard-content');
     if (!container) return;
 
     if (!this.token) {
-      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para visualizar sua evolução, metas e conquistas.</p></div>`;
+      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para visualizar sua evolução, metas e conquistas.<br>Para demonstração: matrícula <b>1001</b> e senha <b>demo123</b>.</p></div>`;
       return;
     }
 
-    container.innerHTML = `<p>Carregando dados de evolução...</p>`;
+    container.innerHTML = `<p style="color:var(--text-muted)">Carregando dados de evolução...</p>`;
     try {
-      const res = await fetch('/api/dashboard', {
-        headers: { Authorization: `Bearer ${this.token}` },
-      });
+      const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${this.token}` } });
       const json = await res.json();
-      const d = json.data;
+      const e = json.data?.estatisticas;
+      if (!e) throw new Error('sem dados');
+      const fmt = (n) => Number(n).toLocaleString('pt-BR');
+      const seta = (v) => `<span class="ev-vs ${v >= 0 ? 'sobe' : 'desce'}">${v >= 0 ? '▲' : '▼'} ${Math.abs(v)}%</span>`;
 
-      let html = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h2 style="color:var(--primary-orange);">Painel de Evolução</h2>
-          <button id="btn-export-csv" class="card-action-btn">Exportar CSV</button>
-        </div>
-        <div class="card-grid">
-          <div class="card">
-            <h3>Seu Nível</h3>
-            <p style="font-size:1.3rem; font-weight:bold; color:#fff; text-transform:capitalize;">${d.aluno?.nivel || 'Iniciante'}</p>
-            <p>Calculado automaticamente a partir do seu tempo de treino.</p>
-          </div>
-          <div class="card">
-            <h3>Presenças Registradas</h3>
-            <p style="font-size:1.3rem; font-weight:bold; color:#fff;">${d.totalCheckinsRecentes} check-in(s)</p>
-            <p>Mantenha a consistência para destravar novas conquistas!</p>
-          </div>
-          <div class="card">
-            <h3>Metas e Conquistas</h3>
-            <p>${d.conquistas?.length || 0} conquista(s) alcançada(s).</p>
-          </div>
-        </div>
-      `;
+      const kpi = (titulo, valor, sufixo, serie, extra = '') =>
+        `<div class="ev-card ev-kpi"><div class="ev-kpi-topo"><span>${titulo}</span>${extra}</div><div class="ev-kpi-valor">${valor}<small>${sufixo}</small></div>${this.svgLinha(serie)}</div>`;
 
-      container.innerHTML = html;
+      // barras dos 12 meses
+      const maxM = Math.max(...e.meses.map(m => m.total), 1);
+      const barras = e.meses.map(m => `<div class="ev-barra-col"><div class="ev-barra-area"><div class="ev-barra ${m.atual ? 'atual' : ''}" style="height:${Math.max(4, (m.total / maxM) * 100)}%"><em>${m.total}</em></div></div><span>${m.rotulo}</span></div>`).join('');
+      const linhaMedia = `<div class="ev-media" style="bottom:calc(${(e.media / maxM) * 100}% * .78 + 22px)"><span>média ${String(e.media).replace('.', ',')}</span></div>`;
+
+      // horários
+      const maxH = Math.max(...e.porHorario.map(x => x.total), 1);
+      const horas = e.porHorario.map(x => `<div class="ev-barra-col"><div class="ev-barra-area"><div class="ev-barra ${x.hora === e.pico ? 'atual' : ''}" style="height:${Math.max(3, (x.total / maxH) * 100)}%"></div></div><span>${x.hora}</span></div>`).join('');
+
+      // calendário de frequência
+      const cal = e.calendario.map(col => `<div class="ev-cal-col">${col.map(d => `<i class="n${d.nivel}" title="${d.date.split('-').reverse().join('/')}${d.min ? ' · ' + d.modalidade + ' · ' + d.min + ' min' : ''}"></i>`).join('')}</div>`).join('');
+
+      // modalidades (donut)
+      const cores = ['#ff7a00', '#ffb15c', '#c24d00', '#ffd9a8'];
+      let acc = 0;
+      const R = 40, C = 2 * Math.PI * R;
+      const fatias = e.modalidades.map((m, i) => { const len = (m.pct / 100) * C, s = `<circle cx="50" cy="50" r="${R}" fill="none" stroke="${cores[i % 4]}" stroke-width="14" stroke-dasharray="${Math.max(len - 1.5, 0).toFixed(1)} ${C.toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}" transform="rotate(-90 50 50)"/>`; acc += len; return s; }).join('');
+      const legenda = e.modalidades.map((m, i) => `<li><i style="background:${cores[i % 4]}"></i>${m.nome}<b>${m.pct}%</b></li>`).join('');
+
+      const cargas = e.cargas.map(c => `<div class="ev-carga"><div class="ev-carga-topo"><span>${c.nome}</span><b>${String(c.valores[7]).replace('.', ',')} kg <em>+${String(c.valores[7] - c.valores[0]).replace('.', ',')} kg</em></b></div>${this.svgLinha(c.valores, 'var(--primary-orange)', 160, 44)}</div>`).join('');
+
+      const conquistas = e.conquistas.map(c => `<div class="ev-conq ${c.feito ? 'feito' : ''}"><div class="ev-conq-ico">${c.feito ? '🏆' : '🎯'}</div><div class="ev-conq-info"><b>${c.titulo}</b><span>${c.desc}</span><div class="ev-prog"><i style="width:${(c.atual / c.meta) * 100}%"></i></div></div><small>${c.atual}/${c.meta}</small></div>`).join('');
+
+      container.innerHTML = `
+        <div class="ev">
+          <div class="ev-topo">
+            <div><h2>Olá, ${e.primeiroNome}!</h2><p>${e.insight}</p></div>
+            <button id="btn-export-csv" class="card-action-btn">Exportar CSV</button>
+          </div>
+
+          <div class="ev-kpis">
+            ${kpi('Treinos no mês', e.kpis.treinosMes.valor, '', e.kpis.treinosMes.serie, seta(e.kpis.treinosMes.vs))}
+            ${kpi('Sequência', e.kpis.sequencia.valor, ' dias 🔥', e.kpis.sequencia.serie)}
+            ${kpi('Horas treinadas', String(e.kpis.horasMes.valor).replace('.', ','), ' h', e.kpis.horasMes.serie)}
+            ${kpi('Calorias', fmt(e.kpis.caloriasMes.valor), ' kcal', e.kpis.caloriasMes.serie)}
+          </div>
+
+          <div class="ev-linha">
+            <div class="ev-card ev-metas"><h4>Suas metas</h4><div class="ev-aneis">${this.svgAnel(e.metas.semana.feitos, e.metas.semana.meta, 'últimos 7 dias')}${this.svgAnel(e.metas.mes.feitos, e.metas.mes.meta, 'no mês')}</div><p class="ev-nota">${seta(e.metas.semana.vs)} em relação aos 7 dias anteriores</p></div>
+            <div class="ev-card ev-grande"><h4>Treinos por mês</h4><div class="ev-grafico">${linhaMedia}<div class="ev-barras">${barras}</div></div></div>
+          </div>
+
+          <div class="ev-card"><h4>Frequência nas últimas 12 semanas</h4><div class="ev-cal-wrap"><div class="ev-cal-dias"><span>seg</span><span></span><span>qua</span><span></span><span>sex</span><span></span><span></span></div><div class="ev-cal">${cal}</div></div><div class="ev-cal-leg">menos <i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i> mais</div></div>
+
+          <div class="ev-linha tres">
+            <div class="ev-card"><h4>Horário preferido <small>pico às ${e.pico}h</small></h4><div class="ev-grafico baixo"><div class="ev-barras fina">${horas}</div></div></div>
+            <div class="ev-card"><h4>Modalidades</h4><div class="ev-donut"><svg viewBox="0 0 100 100">${fatias}</svg><ul>${legenda}</ul></div></div>
+            <div class="ev-card"><h4>Evolução de carga</h4>${cargas}</div>
+          </div>
+
+          <div class="ev-card"><h4>Conquistas</h4><div class="ev-conqs">${conquistas}</div></div>
+          <p class="ev-rodape">Dados fictícios de demonstração.</p>
+        </div>`;
 
       document.getElementById('btn-export-csv')?.addEventListener('click', () => {
         window.open(`/api/dashboard/exportar-csv?token=${this.token}`, '_blank');
       });
     } catch (_) {
-      container.innerHTML = `<p>Erro ao carregar dashboard.</p>`;
+      container.innerHTML = `<p style="color:var(--text-muted)">Erro ao carregar o painel.</p>`;
     }
   },
 

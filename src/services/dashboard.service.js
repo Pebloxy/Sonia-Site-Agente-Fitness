@@ -3,6 +3,7 @@ const DashboardModel = require('../models/dashboard.model');
 const AgendamentoModel = require('../models/agendamento.model');
 const AlunoModel = require('../models/aluno.model');
 const { jsonParaCsv } = require('../utils/helpers');
+const EstatisticasService = require('./estatisticas.service');
 
 class DashboardService {
   static async obterResumo(alunoId) {
@@ -23,6 +24,7 @@ class DashboardService {
       metas,
       conquistas,
       evolucaoCargas,
+      estatisticas: EstatisticasService.gerar(alunoId, aluno || {}), // dados fictícios de demonstração
     };
   }
 

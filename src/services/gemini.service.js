@@ -9,7 +9,7 @@ class GeminiService {
    */
   static async gerarResposta(historicoMensagens, contextoAluno = null) {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const alunoId = contextoAluno?.id || null;
 
     // Se a chave não for válida ou estiver em modo exemplo, aciona o simulador inteligente
@@ -55,6 +55,7 @@ Lembre-se: Você NÃO pode alterar treinos nem fazer diagnósticos. Utilize as f
         'x-goog-api-key': apiKey,
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000), // não deixa o chat travado se a IA não responder
     });
 
     let data = await response.json().catch(() => ({}));
@@ -100,6 +101,7 @@ Lembre-se: Você NÃO pode alterar treinos nem fazer diagnósticos. Utilize as f
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemInstruction }] },
           contents,

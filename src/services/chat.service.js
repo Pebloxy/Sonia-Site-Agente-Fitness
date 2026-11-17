@@ -76,6 +76,9 @@ class ChatService {
           }))
         : [{ role: 'user', text: textoLimpo }];
 
+      // Sem banco de dados o histórico volta vazio: nunca enviar conversa vazia para a IA
+      if (!historicoRecente.length) historicoRecente.push({ role: 'user', text: textoLimpo });
+
       const respostaIa = await GeminiService.gerarResposta(historicoRecente, aluno);
 
       if (alunoId) {

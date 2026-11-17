@@ -5,6 +5,32 @@ const { pool } = require('../config/database');
 const memoryStore = new Map();
 let nextId = 1;
 
+// Aluno de DEMONSTRAÇÃO: já existe quando o servidor roda sem MySQL (login: matrícula 1001 / senha demo123)
+(function criarAlunoDemo() {
+  const bcrypt = require('bcryptjs');
+  memoryStore.set(nextId, {
+    id: nextId,
+    matricula: '1001',
+    nome: 'Lucas Almeida',
+    email: 'lucas.demo@exemplo.com',
+    senha_hash: bcrypt.hashSync('demo123', 10),
+    data_nascimento: '2002-05-14',
+    peso: 78,
+    altura: 1.78,
+    tempo_treino_meses: 15,
+    objetivo: 'Ganho de massa muscular',
+    condicoes_saude: null,
+    nivel: 'intermediário',
+    menor_idade: false,
+    autorizado_responsavel: false,
+    tentativas_login_falhas: 0,
+    bloqueado_ate: null,
+    criado_em: new Date(),
+    dados_atualizados_em: new Date(),
+  });
+  nextId++;
+})();
+
 class AlunoModel {
   static async buscarPorMatricula(matricula) {
     try {

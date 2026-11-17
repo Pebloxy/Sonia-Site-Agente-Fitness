@@ -7,7 +7,7 @@ const { testConnection } = require('./src/config/database');
 const { pyEdge } = require('./src/services/tts.service');
 
 const PORT = process.env.PORT || 3000;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const API_KEY = process.env.GEMINI_API_KEY || '';
 
 async function iniciarServidor() {
