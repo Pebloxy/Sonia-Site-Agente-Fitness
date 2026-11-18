@@ -22,7 +22,7 @@ function spawnPyEdge() {
   const script = path.join(__dirname, '..', '..', 'tts', 'edge_worker.py');
   const py = process.env.PYTHON_CMD || (process.platform === 'win32' ? 'python' : 'python3');
   const p = spawn(py, [script], { stdio: ['pipe', 'pipe', 'inherit'] });
-  p.on('error', () => {});
+  p.on('error', (e) => console.warn(`[edge-tts] não consegui abrir "${py}": ${e.message}`));
   return p;
 }
 
@@ -57,6 +57,7 @@ function pyEdge() {
               worker = p;
               resolve(p);
             } else {
+              console.warn('[edge-tts] o Python abriu, mas falhou:', m.error || 'motivo desconhecido');
               resolve(null);
             }
             continue;
@@ -167,4 +168,3 @@ module.exports = {
   obterStatusTts,
   pyEdge,
 };
-
