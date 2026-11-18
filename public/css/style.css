@@ -397,7 +397,7 @@ html, body {
   padding: 12px 20px;
   background: var(--panel-card);
   border-top: 1px solid var(--panel-border);
-  align-items: center;
+  align-items: flex-end;
 }
 
 .input-field {
@@ -410,7 +410,23 @@ html, body {
   font-size: 1rem;
   outline: none;
   transition: border-color 0.2s;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  overflow-y: hidden;
+  max-height: 140px;
 }
+
+/* Firefox */
+@supports not selector(::-webkit-scrollbar) {
+  .input-field { scrollbar-width: thin; scrollbar-color: #4a4a4a transparent; }
+}
+
+/* barra de rolagem fina e arredondada (aparece só quando o texto passa de 5 linhas) */
+.input-field::-webkit-scrollbar { width: 8px; }
+.input-field::-webkit-scrollbar-track { background: transparent; margin: 12px 0; }
+.input-field::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 8px; }
+.input-field::-webkit-scrollbar-thumb:hover { background: var(--primary-orange); }
 
 .input-field:focus {
   border-color: var(--primary-orange);
@@ -744,3 +760,6 @@ html, body {
 .video-play:hover { background: var(--primary-hover); }
 .chat-card-link { display: inline-block; margin-top: 8px; font-size: .78rem; color: var(--primary-orange); text-decoration: none; }
 .chat-card-link:hover { text-decoration: underline; }
+
+/* Aviso curto do microfone (sistema, não é fala da Sonia) */
+.msg.aviso { align-self: center; background: transparent; border: 1px dashed var(--panel-border); color: var(--text-muted); font-size: .82rem; padding: 8px 14px; max-width: 92%; text-align: center; }

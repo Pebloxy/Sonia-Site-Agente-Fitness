@@ -104,44 +104,90 @@ const App = {
       if (!this.voiceEnabled) this.pararFala();
     });
 
-    // STT: Reconhecimento de Fala pelo microfone (Web Speech API)
+    // STT: Reconhecimento de Fala pelo microfone (Web Speech API; funciona no Chrome e no Edge, com internet)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      this.recognition = new SpeechRecognition();
-      this.recognition.lang = 'pt-BR';
-      this.recognition.continuous = false;
-      this.recognition.interimResults = false;
+    const aviso = texto => this.adicionarAviso(texto);
 
-      this.recognition.onstart = () => {
+    if (!SpeechRecognition) {
+      if (btnMic) btnMic.title = 'Reconhecimento de voz não suportado neste navegador';
+      btnMic?.addEventListener('click', () => aviso('🎤 Este navegador não tem reconhecimento de voz. Use o Google Chrome ou o Microsoft Edge.'));
+      return;
+    }
+
+    const inputField = () => document.getElementById('chat-input');
+    let erroMic = false;
+    let textoFinal = '';
+
+    const criar = () => {
+      const r = new SpeechRecognition();
+      r.lang = 'pt-BR';
+      r.continuous = false;
+      r.interimResults = true; // mostra o que está sendo dito enquanto a pessoa fala
+
+      r.onstart = () => {
         this.isListening = true;
+        erroMic = false;
+        textoFinal = '';
         btnMic?.classList.add('active');
       };
 
-      this.recognition.onresult = event => {
-        const transcript = event.results[0][0].transcript;
-        const inputField = document.getElementById('chat-input');
-        if (inputField) {
-          inputField.value = transcript;
-          this.enviarMensagem(transcript);
-          inputField.value = '';
+      r.onresult = event => {
+        let parcial = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) textoFinal += t; else parcial += t;
         }
+        const campo = inputField();
+        if (campo) { campo.value = (textoFinal + parcial).trim(); this.ajustarAlturaInput?.(); }
       };
 
-      this.recognition.onend = () => {
+      r.onerror = event => {
+        erroMic = true;
+        const msgs = {
+          'not-allowed': '🎤 O microfone está bloqueado. Clique no cadeado ao lado do endereço do site, ative "Microfone" e tente de novo.',
+          'service-not-allowed': '🎤 O microfone está bloqueado. Clique no cadeado ao lado do endereço do site, ative "Microfone" e tente de novo.',
+          'no-speech': '🎤 Não ouvi nada. Clique no microfone e fale logo em seguida.',
+          'audio-capture': '🎤 Não encontrei um microfone neste computador. Confira se ele está conectado.',
+          'network': '🎤 O reconhecimento de voz precisa de internet (e não funciona em alguns navegadores, como o Brave). Tente no Chrome ou no Edge.',
+          'language-not-supported': '🎤 O navegador não oferece reconhecimento de voz em português.',
+        };
+        if (event.error !== 'aborted') aviso(msgs[event.error] || `🎤 Não consegui usar o microfone (${event.error}).`);
+      };
+
+      r.onend = () => {
         this.isListening = false;
         btnMic?.classList.remove('active');
-      };
-
-      btnMic?.addEventListener('click', () => {
-        if (!this.isListening) {
-          this.recognition.start();
-        } else {
-          this.recognition.stop();
+        const campo = inputField();
+        const texto = (campo?.value || '').trim();
+        if (!erroMic && texto) {
+          campo.value = '';
+          this.ajustarAlturaInput?.();
+          this.enviarMensagem(texto); // envia o que foi falado
         }
-      });
-    } else {
-      if (btnMic) btnMic.title = 'Reconhecimento de voz não suportado neste navegador';
-    }
+      };
+      return r;
+    };
+
+    btnMic?.addEventListener('click', () => {
+      if (this.isListening) { this.recognition?.stop(); return; }
+      this.pararFala?.(); // a Sonia para de falar para não "ouvir" a si mesma
+      try {
+        this.recognition = criar();
+        this.recognition.start();
+      } catch (err) {
+        aviso('🎤 Não consegui iniciar o microfone. Atualize a página e tente de novo.');
+      }
+    });
+  },
+
+  adicionarAviso(texto) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'msg aviso';
+    div.textContent = texto;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
   },
 
   // ---- fala da Sonia: voz neural do servidor (frase por frase) com a voz do navegador como reserva ----
@@ -247,11 +293,32 @@ const App = {
     const input = document.getElementById('chat-input');
     const chipsContainer = document.getElementById('chat-chips');
 
+    // a caixa de texto cresce conforme o aluno escreve (até 5 linhas)
+    this.ajustarAlturaInput = () => {
+      if (!input) return;
+      const MAX = 140;
+      const bordas = input.offsetHeight - input.clientHeight; // altura das bordas (a caixa usa border-box)
+      input.style.height = 'auto';
+      const alvo = input.scrollHeight + bordas;
+      input.style.height = Math.min(alvo, MAX) + 'px';
+      input.style.overflowY = alvo > MAX ? 'auto' : 'hidden'; // a barra só aparece quando passa do limite
+    };
+    input?.addEventListener('input', this.ajustarAlturaInput);
+
+    // Enter envia; Shift+Enter quebra a linha
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
     form?.addEventListener('submit', e => {
       e.preventDefault();
       const text = input.value.trim();
       if (!text) return;
       input.value = '';
+      this.ajustarAlturaInput();
       this.enviarMensagem(text);
     });
 
