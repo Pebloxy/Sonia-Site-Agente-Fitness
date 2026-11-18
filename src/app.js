@@ -10,6 +10,7 @@ const routes = require('./routes');
 const { NotFoundError } = require('./utils/errors');
 
 const app = express();
+app.set('trust proxy', 1); // atrás do proxy do Render: sem isso todos os alunos dividiriam o mesmo limite de requisições
 
 // Configurações de segurança HTTP (Helmet) adaptadas para WebGL e scripts locais
 app.use(
