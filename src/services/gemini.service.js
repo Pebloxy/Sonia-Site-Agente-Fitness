@@ -1,13 +1,13 @@
 // src/services/gemini.service.js
 const { PERSONA } = require('../../persona');
-const { geminiFunctionDeclarations, executarFerramenta } = require('./geminiTools');
+const { geminiFunctionDeclarations, executarFerramenta, montarCartoes } = require('./geminiTools');
 
 class GeminiService {
   /**
    * Envia o histórico de mensagens para a API Gemini com suporte a Function Calling
    * e system instruction baseada na personalidade da Sonia.
    */
-  static async gerarResposta(historicoMensagens, contextoAluno = null) {
+  static async gerarResposta(historicoMensagens, contextoAluno = null, cartoes = []) {
     const apiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const alunoId = contextoAluno?.id || null;
@@ -32,95 +32,63 @@ Lembre-se: Você NÃO pode alterar treinos nem fazer diagnósticos. Utilize as f
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-    let contents = historicoMensagens.map(m => ({
+    const contents = historicoMensagens.map(m => ({
       role: m.role === 'sonia' ? 'model' : 'user',
       parts: [{ text: m.text }],
     }));
 
-    const payload = {
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents,
-      tools: [{ function_declarations: geminiFunctionDeclarations }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 600,
-      },
-    };
-
-    // Primeira chamada ao Gemini
-    let response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000), // não deixa o chat travado se a IA não responder
-    });
-
-    let data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error('Erro Gemini API:', response.status, data);
-      throw new Error(response.status === 429 ? 'limite' : 'gemini');
-    }
-
-    const candidate = data.candidates?.[0];
-    const candidateParts = candidate?.content?.parts || [];
-
-    // 2. Verifica se o Gemini solicitou execução de ferramenta (Function Call)
-    const functionCallPart = candidateParts.find(p => p.functionCall);
-    if (functionCallPart) {
-      const { name, args } = functionCallPart.functionCall;
-      console.log(`🤖 Gemini solicitou Function Call: ${name}`, args);
-
-      // Executa a função determinística no backend com validações seguras
-      const resultadoFerramenta = await executarFerramenta(name, args, alunoId);
-
-      // Adiciona a resposta do assistente (com o functionCall) e a resposta da função (functionResponse)
-      contents.push({
-        role: 'model',
-        parts: [{ functionCall: { name, args } }],
-      });
-
-      contents.push({
-        role: 'user',
-        parts: [
-          {
-            functionResponse: {
-              name,
-              response: resultadoFerramenta,
-            },
-          },
-        ],
-      });
-
-      // Segunda chamada ao Gemini para formatar a resposta final em linguagem natural
-      const secondResponse = await fetch(url, {
+    // Conversa com a IA em rodadas: a IA pode pedir ferramentas (horários, treino...), recebe os dados e então escreve a resposta.
+    for (let rodada = 0; rodada < 4; rodada++) {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
-        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemInstruction }] },
           contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 500,
-          },
+          tools: [{ function_declarations: geminiFunctionDeclarations }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
         }),
+        signal: AbortSignal.timeout(30000), // não deixa o chat travado se a IA não responder
       });
 
-      const secondData = await secondResponse.json().catch(() => ({}));
-      const secondParts = secondData.candidates?.[0]?.content?.parts;
-      const finalText = secondParts?.map(p => p.text || '').join('').trim();
-      return finalText || 'Aqui estão as informações solicitadas! Qualquer dúvida me chama! 💪';
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error(`Erro Gemini API (rodada ${rodada + 1}):`, response.status, data);
+        throw new Error(response.status === 429 ? 'limite' : 'gemini');
+      }
+
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const chamadas = parts.filter(p => p.functionCall);
+
+      if (!chamadas.length) {
+        const text = parts.map(p => p.text || '').join('').trim();
+        if (!text) {
+          console.error('Gemini respondeu sem texto:', JSON.stringify(data.candidates?.[0]?.finishReason || data));
+          throw new Error('vazio');
+        }
+        return text;
+      }
+
+      // Devolve a resposta do modelo INTEIRA (os modelos novos exigem as partes originais, com a assinatura de raciocínio)
+      contents.push({ role: 'model', parts });
+
+      const respostas = [];
+      for (const part of chamadas) {
+        const { name, args } = part.functionCall;
+        console.log(`🤖 Gemini solicitou Function Call: ${name}`, args);
+        const resultado = await executarFerramenta(name, args || {}, alunoId);
+        cartoes.push(...montarCartoes(name, args || {}, resultado)); // cartões que aparecem no chat
+        const response = (resultado && typeof resultado === 'object' && !Array.isArray(resultado)) ? resultado : { resultado };
+        respostas.push({ functionResponse: { name, response } });
+      }
+      contents.push({ role: 'user', parts: respostas });
     }
 
-    const text = candidateParts.map(p => p.text || '').join('').trim();
-    if (!text) throw new Error('vazio');
-    return text;
+    console.error('Gemini pediu ferramentas demais sem responder.');
+    throw new Error('gemini');
   }
 
   /**

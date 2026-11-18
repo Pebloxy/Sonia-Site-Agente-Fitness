@@ -79,13 +79,14 @@ class ChatService {
       // Sem banco de dados o histórico volta vazio: nunca enviar conversa vazia para a IA
       if (!historicoRecente.length) historicoRecente.push({ role: 'user', text: textoLimpo });
 
-      const respostaIa = await GeminiService.gerarResposta(historicoRecente, aluno);
+      const cartoes = [];
+      const respostaIa = await GeminiService.gerarResposta(historicoRecente, aluno, cartoes);
 
       if (alunoId) {
         await ChatModel.salvarMensagem(conversaId, 'sonia', respostaIa);
       }
 
-      return { reply: respostaIa };
+      return { reply: respostaIa, cards: cartoes };
     } catch (err) {
       const msgErroAmigavel =
         err.message === 'limite'

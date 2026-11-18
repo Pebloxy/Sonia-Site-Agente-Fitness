@@ -16,6 +16,7 @@ app.use(
   helmet({
     contentSecurityPolicy: false, // permite WebGL e inline scripts do protótipo
     crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }, // o player do YouTube exige saber de qual site veio (senão dá erro 153)
   })
 );
 

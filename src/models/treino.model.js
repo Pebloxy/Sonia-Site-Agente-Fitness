@@ -1,5 +1,6 @@
 // src/models/treino.model.js
 const { pool } = require('../config/database');
+const Demo = require('../demo/treinos.demo'); // rotina de demonstração (usada quando não há banco de dados)
 
 class TreinoModel {
   static async buscarRotinaAtiva(alunoId) {
@@ -11,7 +12,7 @@ class TreinoModel {
       return rows[0] || null;
     } catch (err) {
       console.warn('⚠️ TreinoModel.buscarRotinaAtiva fallback:', err.message);
-      return null;
+      return Demo.rotinaAtiva();
     }
   }
 
@@ -35,7 +36,7 @@ class TreinoModel {
       return rows;
     } catch (err) {
       console.warn('⚠️ TreinoModel.buscarExerciciosRotina fallback:', err.message);
-      return [];
+      return Demo.exerciciosDoDia(diaSemana);
     }
   }
 
@@ -45,7 +46,7 @@ class TreinoModel {
       return rows[0] || null;
     } catch (err) {
       console.warn('⚠️ TreinoModel.buscarExercicioPorId fallback:', err.message);
-      return null;
+      return Demo.exercicioPorId(id);
     }
   }
 
@@ -75,7 +76,7 @@ class TreinoModel {
       return rows[0] || null;
     } catch (err) {
       console.warn('⚠️ TreinoModel.buscarVideoExercicio fallback:', err.message);
-      return null;
+      return Demo.videoDoExercicio(exercicioId);
     }
   }
 

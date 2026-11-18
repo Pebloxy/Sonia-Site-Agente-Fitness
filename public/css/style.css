@@ -726,3 +726,21 @@ html, body {
 .ev-prog i { display: block; height: 100%; background: var(--primary-orange); border-radius: 4px; }
 .ev-rodape { text-align: center; font-size: .72rem; color: var(--text-dim); }
 @media (max-width: 720px) { .ev-linha { grid-template-columns: 1fr; } }
+/* ===== Cartões no chat ===== */
+.chat-card { align-self: flex-start; width: min(82%, 440px); background: var(--panel-card); border: 1px solid var(--panel-border); border-left: 3px solid var(--primary-orange); border-radius: 14px; padding: 12px 14px; animation: fadeIn 0.25s ease-out; }
+.chat-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.chat-card-ico { font-size: 1.4rem; }
+.chat-card-head b { display: block; color: #fff; font-size: .95rem; }
+.chat-card-head small { color: var(--text-muted); font-size: .75rem; text-transform: capitalize; }
+.chat-card-list { list-style: none; display: flex; flex-direction: column; }
+.chat-card-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--panel-border); font-size: .85rem; }
+.chat-card-list li:first-child { border-top: none; }
+.chat-card-list li b { color: var(--text-main); font-weight: 600; display: block; }
+.chat-card-list li small { display: block; color: var(--text-dim); font-size: .72rem; margin-top: 2px; }
+.chat-card-list li > span { color: var(--primary-orange); font-weight: 600; text-align: right; white-space: nowrap; }
+.video-box { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; }
+.video-box img, .video-box iframe { width: 100%; height: 100%; border: 0; display: block; object-fit: cover; }
+.video-play { position: absolute; inset: 0; margin: auto; width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--primary-orange); color: #fff; font-size: 1.3rem; cursor: pointer; box-shadow: 0 0 20px var(--primary-glow); }
+.video-play:hover { background: var(--primary-hover); }
+.chat-card-link { display: inline-block; margin-top: 8px; font-size: .78rem; color: var(--primary-orange); text-decoration: none; }
+.chat-card-link:hover { text-decoration: underline; }

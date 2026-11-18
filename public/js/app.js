@@ -278,6 +278,45 @@ const App = {
     return div;
   },
 
+  // Cartões que acompanham a resposta da Sonia (vídeo do exercício, horários, modalidades, treino do dia...)
+  esc(t) {
+    return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  },
+
+  adicionarCartoes(cards) {
+    const container = document.getElementById('chat-messages');
+    if (!container || !Array.isArray(cards) || !cards.length) return;
+
+    cards.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'chat-card';
+
+      if (c.tipo === 'video' && /^[\w-]{11}$/.test(c.videoId || '')) {
+        el.innerHTML = `
+          <div class="chat-card-head"><span class="chat-card-ico">▶️</span><div><b>${this.esc(c.titulo)}</b><small>${this.esc(c.detalhe || '')}</small></div></div>
+          <div class="video-box" data-id="${c.videoId}">
+            <img src="https://i.ytimg.com/vi/${c.videoId}/hqdefault.jpg" alt="Vídeo: ${this.esc(c.titulo)}" loading="lazy">
+            <button type="button" class="video-play" aria-label="Assistir vídeo">▶</button>
+          </div>
+          <a class="chat-card-link" href="${this.esc(c.url)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
+        el.querySelector('.video-play').addEventListener('click', () => {
+          const box = el.querySelector('.video-box');
+          box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${c.videoId}?autoplay=1&rel=0" title="${this.esc(c.titulo)}" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+        });
+      } else if (c.tipo === 'lista') {
+        const itens = (c.itens || []).map(i => `
+          <li><div><b>${this.esc(i.titulo)}</b>${i.extra ? `<small>${this.esc(i.extra)}</small>` : ''}</div><span>${this.esc(i.detalhe || '')}</span></li>`).join('');
+        el.innerHTML = `
+          <div class="chat-card-head"><span class="chat-card-ico">${c.icone || '📋'}</span><div><b>${this.esc(c.titulo)}</b>${c.subtitulo ? `<small>${this.esc(c.subtitulo)}</small>` : ''}</div></div>
+          <ul class="chat-card-list">${itens}</ul>`;
+      } else {
+        return;
+      }
+      container.appendChild(el);
+    });
+    container.scrollTop = container.scrollHeight;
+  },
+
   async enviarMensagem(texto) {
     this.adicionarMensagemNaTela('user', texto);
     const typingIndicator = this.adicionarMensagemNaTela('sonia', 'Sonia está digitando...', true);
@@ -297,6 +336,7 @@ const App = {
 
       const reply = data.reply || 'Ops, tive um imprevisto na conexão. Tente de novo!';
       this.adicionarMensagemNaTela('sonia', reply);
+      this.adicionarCartoes(data.cards);
       this.falar(reply);
     } catch (err) {
       typingIndicator.remove();
