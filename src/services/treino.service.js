@@ -1,16 +1,20 @@
 // src/services/treino.service.js
 const TreinoModel = require('../models/treino.model');
+const Demo = require('../demo/treinos.demo');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
 
 class TreinoService {
   static async obterRotinaDoDia(alunoId, diaSemana) {
     const rotina = await TreinoModel.buscarRotinaAtiva(alunoId);
+    const fichas = Demo.obterFichas();
+
     if (!rotina) {
       return {
-        possuiRotina: false,
+        possuiRotina: true,
         diaSemana,
-        mensagem: 'Nenhuma rotina ativa cadastrada pelo seu instrutor no momento. Fale com seu treinador!',
-        exercicios: [],
+        nomeRotina: 'Divisão ABC – Pedro Gabriel',
+        fichas,
+        exercicios: Demo.exerciciosDoDia(diaSemana),
       };
     }
 
@@ -20,6 +24,7 @@ class TreinoService {
       rotinaId: rotina.id,
       nomeRotina: rotina.nome,
       diaSemana,
+      fichas,
       exercicios,
     };
   }

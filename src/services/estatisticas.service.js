@@ -120,7 +120,11 @@ class EstatisticasService {
     // evolução de carga (kg), 8 semanas, crescente
     const rc = rng(7 + (Number(alunoId) || 1));
     const carga = (ini, fim) => Array.from({ length: 8 }, (_, i) => Math.round((ini + ((fim - ini) * i) / 7 + (rc() - 0.5) * 2) / 2.5) * 2.5);
-    const cargas = [{ nome: 'Supino reto', valores: carga(60, 72.5) }, { nome: 'Agachamento livre', valores: carga(80, 102.5) }];
+    const cargas = [
+      { nome: 'Agachamento livre', valores: carga(70, 95) },
+      { nome: 'Supino reto', valores: carga(50, 67.5) },
+      { nome: 'Puxada frontal', valores: carga(40, 55) },
+    ];
 
     // conquistas
     const madrugador = h.filter((t) => t.hora <= 7 && t.date >= somaDias(hoje, -60)).length;

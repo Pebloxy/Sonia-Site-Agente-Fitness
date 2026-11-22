@@ -6,46 +6,98 @@ const sem = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 const yt = (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
 
 const EXERCICIOS = [
-  { id: 1, nome: 'Supino reto', grupo: 'Peito', videoId: 'vIGvt-vgrvY', desc: 'Desenvolve o peitoral, ombros e tríceps.',
-    exec: 'Deite no banco com os pés firmes no chão, segure a barra um pouco mais aberta que os ombros, desça até tocar de leve o peito e empurre sem tirar as costas do banco.' },
-  { id: 2, nome: 'Crucifixo', grupo: 'Peito', videoId: 'ohTfwQvg5u0', desc: 'Isola e alonga o peitoral.',
-    exec: 'Com os cotovelos levemente flexionados, abra os braços até sentir o peitoral alongar e volte como se abraçasse uma árvore.' },
-  { id: 3, nome: 'Tríceps testa', grupo: 'Tríceps', videoId: 'VakpIeaaeXA', desc: 'Foco na parte de trás dos braços.',
-    exec: 'Deitado, mantenha os cotovelos fixos apontando para o teto e flexione só o antebraço, levando a barra em direção à testa.' },
-  { id: 4, nome: 'Puxada frontal', grupo: 'Costas', videoId: 'ScK9NUack_k', desc: 'Trabalha o latíssimo do dorso e o bíceps.',
-    exec: 'Segure a barra aberta, peito aberto, e puxe até a altura do queixo levando os cotovelos para baixo e para trás.' },
-  { id: 5, nome: 'Remada curvada', grupo: 'Costas', videoId: 'VJHBEy2duVc', desc: 'Fortalece a musculatura das costas.',
-    exec: 'Com o tronco inclinado e a coluna neutra, puxe a barra em direção ao abdômen, sem balançar o corpo.' },
-  { id: 6, nome: 'Rosca direta', grupo: 'Bíceps', videoId: 'n158HS07tOE', desc: 'Foco no bíceps.',
-    exec: 'Cotovelos colados ao corpo, suba a barra sem balançar o tronco e desça devagar.' },
-  { id: 7, nome: 'Agachamento livre', grupo: 'Pernas', videoId: 'rM6SDUdl9fs', desc: 'O rei dos exercícios de perna e glúteo.',
+  // Perna
+  { id: 1, nome: 'Agachamento livre', grupo: 'Pernas', videoId: 'rM6SDUdl9fs', desc: 'O rei dos exercícios de perna e glúteo.',
     exec: 'Pés na largura dos ombros, peito aberto, joelhos alinhados com a ponta dos pés. Jogue o quadril para trás como se fosse sentar, desça mantendo a coluna reta e suba empurrando o chão.' },
-  { id: 8, nome: 'Leg press', grupo: 'Pernas', videoId: 'itJDw9I1qu4', desc: 'Fortalece quadríceps e glúteos com apoio nas costas.',
+  { id: 2, nome: 'Leg Press', grupo: 'Pernas', videoId: 'itJDw9I1qu4', desc: 'Fortalece quadríceps e glúteos com apoio nas costas.',
     exec: 'Costas apoiadas, pés na largura dos ombros, desça até cerca de 90 graus nos joelhos e empurre sem travar os joelhos no final.' },
-  { id: 9, nome: 'Cadeira extensora', grupo: 'Quadríceps', videoId: 'RHgqvYAed_8', desc: 'Isola o quadríceps.',
-    exec: 'Ajuste o encosto, estenda os joelhos sem travar no final e volte devagar.' },
-  { id: 10, nome: 'Desenvolvimento com halteres', grupo: 'Ombros', videoId: 'eufDL9MmF8A', desc: 'Constrói ombros fortes.',
-    exec: 'Sentado, empurre os halteres acima da cabeça sem arquear a lombar e desça até a altura das orelhas.' },
-  { id: 11, nome: 'Elevação lateral', grupo: 'Ombros', videoId: 'U_T4z45fhLw', desc: 'Foco na lateral do ombro.',
-    exec: 'Com leve flexão de cotovelos, suba os halteres até a altura dos ombros, sem impulso.' },
-  { id: 12, nome: 'Prancha abdominal', grupo: 'Abdômen', videoId: '9dn5Fb3cSoE', desc: 'Fortalece o core. Segure 40 segundos.',
-    exec: 'Apoie antebraços e pontas dos pés, corpo em linha reta, abdômen contraído, sem deixar o quadril cair.' },
-  { id: 13, nome: 'Alongamento geral', grupo: 'Corpo todo', videoId: 'w4LCsSxB-SQ', desc: 'Relaxa a musculatura. Cerca de 10 minutos.',
-    exec: 'Segure cada alongamento por 20 a 30 segundos, sem dor e respirando devagar.' },
-];
-const porNome = (n) => EXERCICIOS.find((e) => e.nome === n);
+  { id: 3, nome: 'Cadeira extensora', grupo: 'Quadríceps', videoId: 'RHgqvYAed_8', desc: 'Isolamento do quadríceps na máquina.',
+    exec: 'Ajuste o encosto, estenda os joelhos sem travar no final e volte devagar com controle.' },
+  { id: 4, nome: 'Mesa flexora', grupo: 'Posterior de Coxa', videoId: 'FpC9Q7vXyX4', desc: 'Isolamento dos isquiotibiais (posterior da coxa).',
+    exec: 'Deite de bruços na máquina com os calcanhares sob o rolo. Flexione os joelhos trazendo os calcanhares em direção aos glúteos.' },
+  { id: 5, nome: 'Panturrilha em pé', grupo: 'Panturrilhas', videoId: '3UWi44TX6kA', desc: 'Fortalecimento completo dos gastrocnêmios e sóleo.',
+    exec: 'Apoie a ponta dos pés no degrau, eleve o corpo ao ponto máximo de contração e desça alongando a musculatura.' },
 
-// Rotina cadastrada pelo instrutor: dia -> [exercício, séries, repetições, carga (kg), etapa]
+  // Costas e Bíceps
+  { id: 6, nome: 'Puxada frontal', grupo: 'Costas', videoId: 'ScK9NUack_k', desc: 'Trabalha o latíssimo do dorso e o bíceps.',
+    exec: 'Segure a barra aberta, peito aberto, e puxe até a altura do queixo levando os cotovelos para baixo e para trás.' },
+  { id: 7, nome: 'Remada curvada', grupo: 'Costas', videoId: 'VJHBEy2duVc', desc: 'Fortalece a musculatura dorsal em profundidade.',
+    exec: 'Com o tronco inclinado a 45° e coluna neutra, puxe a barra em direção ao abdômen com as escápulas aduzidas.' },
+  { id: 8, nome: 'Remada baixa', grupo: 'Costas', videoId: 'GZbfZ033fBQ', desc: 'Exercício no cabo que trabalha o meio das costas e trapézio.',
+    exec: 'Sentado com postura ereta, puxe o triângulo até a região da cintura aproximando as escápulas.' },
+  { id: 9, nome: 'Rosca direta', grupo: 'Bíceps', videoId: 'n158HS07tOE', desc: 'Exercício clássico para desenvolvimento dos bíceps.',
+    exec: 'Cotovelos fixos ao lado do corpo, suba a barra até os ombros e desça de forma lenta e controlada.' },
+  { id: 10, nome: 'Rosca martelo', grupo: 'Bíceps e Antebraço', videoId: 'TwD-YGVP4Bk', desc: 'Trabalha bíceps braquial e braquiorradial com pegada neutra.',
+    exec: 'Com halteres e palmas viradas uma para a outra, flexione os cotovelos sem girar o punho.' },
+
+  // Peito e Tríceps
+  { id: 11, nome: 'Supino reto', grupo: 'Peito', videoId: 'vIGvt-vgrvY', desc: 'Desenvolve peitoral maior, ombros anteriores e tríceps.',
+    exec: 'Deite no banco com pés firmes, segure a barra um pouco além da largura dos ombros, desça ao peito e empurre.' },
+  { id: 12, nome: 'Supino inclinado', grupo: 'Peito Superior', videoId: '0G2_XV7slIg', desc: 'Foco na porção clavicular do peitoral maior.',
+    exec: 'Ajuste o banco em 30-45 graus. Empurre os halteres para cima e retorne controlando a descida.' },
+  { id: 13, nome: 'Crucifixo', grupo: 'Peito', videoId: 'ohTfwQvg5u0', desc: 'Isola e promove grande alongamento das fibras do peitoral.',
+    exec: 'Com os cotovelos levemente flexionados, abra os braços até sentir o alongamento e feche em arco.' },
+  { id: 14, nome: 'Tríceps testa', grupo: 'Tríceps', videoId: 'VakpIeaaeXA', desc: 'Foco na cabeça longa do tríceps braquial.',
+    exec: 'Deitado, mantenha os cotovelos fixos apontando para cima e desça a barra até próximo da testa.' },
+  { id: 15, nome: 'Tríceps pulley', grupo: 'Tríceps', videoId: '2-LAMcpzODU', desc: 'Isolamento no cabo com contração contínua.',
+    exec: 'De frente para a polia alta, empurre a corda ou barra para baixo até estender totalmente os cotovelos.' },
+];
+const porNome = (n) => EXERCICIOS.find((e) => e.nome.toLowerCase() === n.toLowerCase());
+
+// Rotina cadastrada pelo instrutor: dia -> [Título, [[exercício, séries, repetições, carga (kg)]]]
 const SEMANA = {
-  segunda: ['Treino A – Peito e tríceps', [['Supino reto', 4, 10, 40], ['Crucifixo', 3, 12, 14], ['Tríceps testa', 3, 12, 20], ['Prancha abdominal', 3, 1, null]]],
-  terca: ['Treino B – Costas e bíceps', [['Puxada frontal', 4, 10, 45], ['Remada curvada', 4, 10, 35], ['Rosca direta', 3, 12, 20]]],
-  quarta: ['Treino C – Pernas', [['Agachamento livre', 4, 10, 50], ['Leg press', 4, 12, 120], ['Cadeira extensora', 3, 15, 40]]],
-  quinta: ['Treino D – Ombros e abdômen', [['Desenvolvimento com halteres', 4, 10, 14], ['Elevação lateral', 3, 15, 6], ['Prancha abdominal', 3, 1, null]]],
-  sexta: ['Treino E – Corpo todo (leve)', [['Agachamento livre', 3, 12, 40], ['Supino reto', 3, 12, 35], ['Puxada frontal', 3, 12, 40], ['Alongamento geral', 1, 1, null]]],
-  sabado: ['Treino F – Alongamento e mobilidade', [['Alongamento geral', 1, 1, null]]],
+  segunda: ['Treino A – Perna', [
+    ['Agachamento livre', 4, 10, 60],
+    ['Leg Press', 4, 12, 160],
+    ['Cadeira extensora', 3, 12, 45],
+    ['Mesa flexora', 3, 12, 35],
+    ['Panturrilha em pé', 4, 15, 70],
+  ]],
+  terca: ['Treino B – Costas e Bíceps', [
+    ['Puxada frontal', 4, 10, 50],
+    ['Remada curvada', 4, 10, 40],
+    ['Remada baixa', 3, 12, 45],
+    ['Rosca direta', 3, 10, 22],
+    ['Rosca martelo', 3, 12, 14],
+  ]],
+  quarta: ['Treino C – Peito e Tríceps', [
+    ['Supino reto', 4, 10, 50],
+    ['Supino inclinado', 4, 10, 40],
+    ['Crucifixo', 3, 12, 14],
+    ['Tríceps testa', 3, 12, 20],
+    ['Tríceps pulley', 3, 12, 25],
+  ]],
+  quinta: ['Treino A – Perna', [
+    ['Agachamento livre', 4, 10, 60],
+    ['Leg Press', 4, 12, 160],
+    ['Cadeira extensora', 3, 12, 45],
+    ['Mesa flexora', 3, 12, 35],
+    ['Panturrilha em pé', 4, 15, 70],
+  ]],
+  sexta: ['Treino B – Costas e Bíceps', [
+    ['Puxada frontal', 4, 10, 50],
+    ['Remada curvada', 4, 10, 40],
+    ['Remada baixa', 3, 12, 45],
+    ['Rosca direta', 3, 10, 22],
+    ['Rosca martelo', 3, 12, 14],
+  ]],
+  sabado: ['Treino C – Peito e Tríceps', [
+    ['Supino reto', 4, 10, 50],
+    ['Supino inclinado', 4, 10, 40],
+    ['Crucifixo', 3, 12, 14],
+    ['Tríceps testa', 3, 12, 20],
+    ['Tríceps pulley', 3, 12, 25],
+  ]],
+  domingo: ['Treino A – Perna (Opcional)', [
+    ['Agachamento livre', 4, 10, 60],
+    ['Leg Press', 4, 12, 160],
+    ['Cadeira extensora', 3, 12, 45],
+    ['Mesa flexora', 3, 12, 35],
+    ['Panturrilha em pé', 4, 15, 70],
+  ]],
 };
 
-const rotinaAtiva = () => ({ id: 1, aluno_id: null, nome: 'Rotina de hipertrofia (demonstração)', ativa: 1 });
+const rotinaAtiva = () => ({ id: 1, aluno_id: null, nome: 'Divisão ABC – Pedro Gabriel', ativa: 1 });
 
 function exerciciosDoDia(dia) {
   const dias = dia ? [dia] : Object.keys(SEMANA);
@@ -88,4 +140,48 @@ const videoDoExercicio = (id) => {
 
 const nomesExercicios = () => EXERCICIOS.map((e) => e.nome);
 
-module.exports = { rotinaAtiva, exerciciosDoDia, exercicioPorId, buscarExercicio, videoDoExercicio, nomesExercicios, yt };
+function obterFichas() {
+  return [
+    {
+      id: 'perna',
+      titulo: 'Perna',
+      icone: '🦵',
+      dias: 'Segunda e Quinta',
+      exercicios: [
+        { nome: 'Agachamento livre', series: 4, repeticoes: 10, carga_sugerida: 60, grupo_muscular: 'Pernas', etapa: 'principal' },
+        { nome: 'Leg Press', series: 4, repeticoes: 12, carga_sugerida: 160, grupo_muscular: 'Pernas', etapa: 'principal' },
+        { nome: 'Cadeira extensora', series: 3, repeticoes: 12, carga_sugerida: 45, grupo_muscular: 'Quadríceps', etapa: 'secundario' },
+        { nome: 'Mesa flexora', series: 3, repeticoes: 12, carga_sugerida: 35, grupo_muscular: 'Posterior de Coxa', etapa: 'secundario' },
+        { nome: 'Panturrilha em pé', series: 4, repeticoes: 15, carga_sugerida: 70, grupo_muscular: 'Panturrilhas', etapa: 'secundario' },
+      ],
+    },
+    {
+      id: 'costas_biceps',
+      titulo: 'Costas e Bíceps',
+      icone: '🦾',
+      dias: 'Terça e Sexta',
+      exercicios: [
+        { nome: 'Puxada frontal', series: 4, repeticoes: 10, carga_sugerida: 50, grupo_muscular: 'Costas', etapa: 'principal' },
+        { nome: 'Remada curvada', series: 4, repeticoes: 10, carga_sugerida: 40, grupo_muscular: 'Costas', etapa: 'principal' },
+        { nome: 'Remada baixa', series: 3, repeticoes: 12, carga_sugerida: 45, grupo_muscular: 'Costas', etapa: 'secundario' },
+        { nome: 'Rosca direta', series: 3, repeticoes: 10, carga_sugerida: 22, grupo_muscular: 'Bíceps', etapa: 'secundario' },
+        { nome: 'Rosca martelo', series: 3, repeticoes: 12, carga_sugerida: 14, grupo_muscular: 'Bíceps e Antebraço', etapa: 'secundario' },
+      ],
+    },
+    {
+      id: 'peito_triceps',
+      titulo: 'Peito e Tríceps',
+      icone: '🏋️',
+      dias: 'Quarta e Sábado',
+      exercicios: [
+        { nome: 'Supino reto', series: 4, repeticoes: 10, carga_sugerida: 50, grupo_muscular: 'Peito', etapa: 'principal' },
+        { nome: 'Supino inclinado', series: 4, repeticoes: 10, carga_sugerida: 40, grupo_muscular: 'Peito Superior', etapa: 'principal' },
+        { nome: 'Crucifixo', series: 3, repeticoes: 12, carga_sugerida: 14, grupo_muscular: 'Peito', etapa: 'secundario' },
+        { nome: 'Tríceps testa', series: 3, repeticoes: 12, carga_sugerida: 20, grupo_muscular: 'Tríceps', etapa: 'secundario' },
+        { nome: 'Tríceps pulley', series: 3, repeticoes: 12, carga_sugerida: 25, grupo_muscular: 'Tríceps', etapa: 'secundario' },
+      ],
+    },
+  ];
+}
+
+module.exports = { rotinaAtiva, exerciciosDoDia, exercicioPorId, buscarExercicio, videoDoExercicio, nomesExercicios, obterFichas, yt };

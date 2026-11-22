@@ -605,7 +605,7 @@ const App = {
     if (!container) return;
 
     if (!this.token) {
-      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para consultar sua rotina de treinos personalizada prescrita pelo seu instrutor.</p></div>`;
+      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para consultar sua rotina de treinos personalizada prescrita pelo seu instrutor.<br>Para demonstração: matrícula <b>12345678912</b> e senha <b>PedroGabrielPedro</b>.</p></div>`;
       return;
     }
 
@@ -622,32 +622,95 @@ const App = {
       }
 
       const exercicios = data.data.exercicios || [];
-      if (!exercicios.length) {
+      const fichas = data.data.fichas || [];
+
+      if (!exercicios.length && !fichas.length) {
         container.innerHTML = `<div class="card"><h3>Dia de Descanso! 😴</h3><p>Não há exercícios programados para hoje na sua rotina (${data.data.diaSemana}). Aproveite para recuperar a musculatura!</p></div>`;
         return;
       }
 
+      const renderCard = (ex) => `
+        <div class="card">
+          <h3>${ex.nome}</h3>
+          <p><strong>Etapa:</strong> ${ex.etapa || 'Principal'} | <strong>Grupo:</strong> ${ex.grupo_muscular || '-'}</p>
+          <p><strong>Séries:</strong> ${ex.series} x ${ex.repeticoes} reps | <strong>Carga sugerida:</strong> ${ex.carga_sugerida ? `${ex.carga_sugerida}kg` : 'Livre'}</p>
+          <p>${ex.descricao || ''}</p>
+        </div>
+      `;
+
       let html = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h2 style="color:var(--primary-orange);">Treino de Hoje (${data.data.diaSemana.toUpperCase()})</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <h2 style="color:var(--primary-orange); margin:0;">Meus Treinos & Rotinas</h2>
           <button id="btn-abrir-concluir-treino" class="card-action-btn" style="background:var(--primary-orange); color:#fff; border:none; padding:8px 16px;">Concluir Treino & Avaliar</button>
         </div>
         <div class="card" style="margin-bottom:16px; border-left: 4px solid var(--primary-orange);">
           <p><strong>Lembrete de Segurança da Sonia (RN23):</strong> Ao terminar cada exercício, lembre-se de guardar os halteres e anilhas nos suportes e travar as máquinas para segurança de todos! 💪</p>
         </div>
-        <div class="card-grid">`;
-      exercicios.forEach(ex => {
+      `;
+
+      if (fichas && fichas.length) {
         html += `
-          <div class="card">
-            <h3>${ex.nome}</h3>
-            <p><strong>Etapa:</strong> ${ex.etapa} | <strong>Grupo:</strong> ${ex.grupo_muscular || '-'}</p>
-            <p><strong>Séries:</strong> ${ex.series} x ${ex.repeticoes} reps | <strong>Carga sugerida:</strong> ${ex.carga_sugerida ? `${ex.carga_sugerida}kg` : 'Livre'}</p>
-            <p>${ex.descricao || ''}</p>
+          <div class="treinos-fichas-nav" style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+            ${fichas.map((f, idx) => `
+              <button type="button" class="ficha-tab-btn" data-idx="${idx}" style="padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; border:1px solid #333; background:#1a1b20; color:var(--text-muted); transition:0.2s;">
+                ${f.titulo}
+              </button>
+            `).join('')}
+            <button type="button" class="ficha-tab-btn" data-idx="todos" style="padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; border:1px solid #333; background:#1a1b20; color:var(--text-muted); transition:0.2s;">
+              📋 Todas as Fichas
+            </button>
           </div>
+          <div id="ficha-detalhe-container"></div>
         `;
-      });
-      html += `</div>`;
+      } else {
+        html += `
+          <h3 style="color:var(--primary-orange); margin-bottom:8px;">Treino de Hoje (${data.data.diaSemana.toUpperCase()})</h3>
+          <div class="card-grid">${exercicios.map(renderCard).join('')}</div>
+        `;
+      }
+
       container.innerHTML = html;
+
+      if (fichas && fichas.length) {
+        const renderFichaView = (target) => {
+          const detail = document.getElementById('ficha-detalhe-container');
+          if (!detail) return;
+          const btns = container.querySelectorAll('.ficha-tab-btn');
+          btns.forEach(b => {
+            const isMatch = b.getAttribute('data-idx') === String(target);
+            b.style.background = isMatch ? 'var(--primary-orange)' : '#1a1b20';
+            b.style.borderColor = isMatch ? 'var(--primary-orange)' : '#333';
+            b.style.color = isMatch ? '#fff' : 'var(--text-muted)';
+          });
+
+          if (target === 'todos') {
+            detail.innerHTML = fichas.map(f => `
+              <div style="margin-bottom:24px;">
+                <h3 style="color:var(--primary-orange); margin-bottom:4px; border-bottom:1px solid #282a30; padding-bottom:6px;">${f.titulo} <small style="color:var(--text-muted); font-size:0.85rem; font-weight:normal;">(${f.descricao || ''})</small></h3>
+                <div class="card-grid" style="margin-top:10px;">${f.exercicios.map(renderCard).join('')}</div>
+              </div>
+            `).join('');
+          } else {
+            const idx = Number(target) || 0;
+            const f = fichas[idx] || fichas[0];
+            detail.innerHTML = `
+              <div style="margin-bottom:12px;">
+                <h3 style="color:var(--primary-orange); margin-bottom:4px;">${f.titulo}</h3>
+                <p style="color:var(--text-muted); margin:0;">${f.descricao || ''}</p>
+              </div>
+              <div class="card-grid">${f.exercicios.map(renderCard).join('')}</div>
+            `;
+          }
+        };
+
+        container.querySelectorAll('.ficha-tab-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            renderFichaView(btn.getAttribute('data-idx'));
+          });
+        });
+
+        renderFichaView(0);
+      }
 
       document.getElementById('btn-abrir-concluir-treino')?.addEventListener('click', () => {
         document.getElementById('modal-treino')?.removeAttribute('hidden');
@@ -716,7 +779,7 @@ const App = {
     if (!container) return;
 
     if (!this.token) {
-      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para visualizar sua evolução, metas e conquistas.<br>Para demonstração: matrícula <b>1001</b> e senha <b>demo123</b>.</p></div>`;
+      container.innerHTML = `<div class="card"><h3>Acesso restrito</h3><p>Faça login para visualizar sua evolução, metas e conquistas.<br>Para demonstração: matrícula <b>12345678912</b> e senha <b>PedroGabrielPedro</b>.</p></div>`;
       return;
     }
 

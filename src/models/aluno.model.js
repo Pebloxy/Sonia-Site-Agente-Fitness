@@ -5,9 +5,34 @@ const { pool } = require('../config/database');
 const memoryStore = new Map();
 let nextId = 1;
 
-// Aluno de DEMONSTRAÇÃO: já existe quando o servidor roda sem MySQL (login: matrícula 1001 / senha demo123)
+// Aluno de DEMONSTRAÇÃO: já existe quando o servidor roda sem MySQL
 (function criarAlunoDemo() {
   const bcrypt = require('bcryptjs');
+  // Conta Oficial de Demonstração Solicitada
+  memoryStore.set(nextId, {
+    id: nextId,
+    matricula: '12345678912',
+    nome: 'Pedro Gabriel',
+    email: 'pedro.gabriel@exemplo.com',
+    senha_hash: bcrypt.hashSync('PedroGabrielPedro', 10),
+    data_nascimento: '2001-08-20',
+    peso: 77.5,
+    altura: 1.78,
+    tempo_treino_meses: 18,
+    objetivo: 'Hipertrofia e Ganho de Massa',
+    condicoes_saude: null,
+    nivel: 'intermediário',
+    menor_idade: false,
+    autorizado_responsavel: true,
+    tentativas_login_falhas: 0,
+    bloqueado_ate: null,
+    criado_em: new Date(),
+    dados_atualizados_em: new Date(),
+    consentimentoAceito: true,
+  });
+  nextId++;
+
+  // Mantém conta demo legada para compatibilidade de testes
   memoryStore.set(nextId, {
     id: nextId,
     matricula: '1001',
@@ -27,6 +52,7 @@ let nextId = 1;
     bloqueado_ate: null,
     criado_em: new Date(),
     dados_atualizados_em: new Date(),
+    consentimentoAceito: true,
   });
   nextId++;
 })();

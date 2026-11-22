@@ -32,8 +32,8 @@ function blocosDoDia(date) {
 
 // ---------- aluno de demonstração ----------
 const ALUNO = {
-  matricula: '1001', nome: 'Lucas Almeida', idade: 24, pesoKg: 78, alturaM: 1.78,
-  nivel: 'intermediário', objetivo: 'ganho de massa muscular', tempoDeTreino: '1 ano e 3 meses',
+  matricula: '12345678912', nome: 'Pedro Gabriel', idade: 23, pesoKg: 77.5, alturaM: 1.78,
+  nivel: 'intermediário', objetivo: 'hipertrofia e ganho de massa', tempoDeTreino: '1 ano e 6 meses',
   instrutor: 'Carla Mendes',
 };
 
@@ -41,30 +41,43 @@ const ALUNO = {
 //            se preencherem "videoId" com o código de um vídeo, ele passa a aparecer dentro do chat) ----------
 const yt = (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
 const EXERCICIOS = [
-  { nome: 'Supino reto', series: '4x10', musculo: 'peitoral', execucao: 'Deite no banco com os pés firmes no chão, segure a barra um pouco mais aberta que os ombros, desça até tocar de leve o peito e empurre sem tirar as costas do banco.', videoId: null, busca: 'supino reto execução correta' },
-  { nome: 'Crucifixo', series: '3x12', musculo: 'peitoral', execucao: 'Com cotovelos levemente flexionados, abra os braços até sentir o peitoral alongar e volte como se abraçasse uma árvore.', videoId: null, busca: 'crucifixo halteres execução correta' },
-  { nome: 'Tríceps testa', series: '3x12', musculo: 'tríceps', execucao: 'Deitado, mantenha os cotovelos fixos apontando para o teto e flexione só o antebraço, levando a barra em direção à testa.', videoId: null, busca: 'tríceps testa execução correta' },
-  { nome: 'Puxada frontal', series: '4x10', musculo: 'costas', execucao: 'Segure a barra aberta, peito aberto, e puxe até a altura do queixo levando os cotovelos para baixo e para trás.', videoId: null, busca: 'puxada frontal execução correta' },
-  { nome: 'Remada curvada', series: '4x10', musculo: 'costas', execucao: 'Com o tronco inclinado e a coluna neutra, puxe a barra em direção ao abdômen, sem balançar o corpo.', videoId: null, busca: 'remada curvada execução correta' },
-  { nome: 'Rosca direta', series: '3x12', musculo: 'bíceps', execucao: 'Cotovelos colados ao corpo, suba a barra sem balançar o tronco e desça devagar.', videoId: null, busca: 'rosca direta execução correta' },
-  { nome: 'Agachamento livre', series: '4x10', musculo: 'pernas', execucao: 'Pés na largura dos ombros, joelhos alinhados com a ponta dos pés, desça com o quadril para trás mantendo a coluna reta e suba empurrando o chão.', videoId: null, busca: 'agachamento livre execução correta' },
-  { nome: 'Leg press', series: '4x12', musculo: 'pernas', execucao: 'Costas apoiadas, pés na largura dos ombros, desça até cerca de 90 graus nos joelhos e empurre sem travar os joelhos no final.', videoId: null, busca: 'leg press execução correta' },
-  { nome: 'Cadeira extensora', series: '3x15', musculo: 'quadríceps', execucao: 'Ajuste o encosto, estenda os joelhos sem travar no final e volte devagar.', videoId: null, busca: 'cadeira extensora execução correta' },
-  { nome: 'Desenvolvimento com halteres', series: '4x10', musculo: 'ombros', execucao: 'Sentado, empurre os halteres acima da cabeça sem arquear a lombar e desça até a altura das orelhas.', videoId: null, busca: 'desenvolvimento ombro halteres execução correta' },
-  { nome: 'Elevação lateral', series: '3x15', musculo: 'ombros', execucao: 'Com leve flexão de cotovelos, suba os halteres até a altura dos ombros, sem impulso.', videoId: null, busca: 'elevação lateral execução correta' },
-  { nome: 'Prancha abdominal', series: '3x40s', musculo: 'abdômen', execucao: 'Apoie antebraços e pontas dos pés, corpo em linha reta, abdômen contraído, sem deixar o quadril cair.', videoId: null, busca: 'prancha abdominal execução correta' },
-  { nome: 'Alongamento geral', series: '10 min', musculo: 'corpo todo', execucao: 'Segure cada alongamento por 20 a 30 segundos, sem dor e respirando devagar.', videoId: null, busca: 'alongamento pós treino' },
+  // Perna
+  { nome: 'Agachamento livre', series: '4x10', musculo: 'pernas', execucao: 'Pés na largura dos ombros, joelhos alinhados com a ponta dos pés, desça com o quadril para trás mantendo a coluna reta e suba empurrando o chão.', videoId: 'rM6SDUdl9fs', busca: 'agachamento livre execução correta' },
+  { nome: 'Leg press', series: '4x12', musculo: 'pernas', execucao: 'Costas apoiadas, pés na largura dos ombros, desça até cerca de 90 graus nos joelhos e empurre sem travar os joelhos no final.', videoId: 'itJDw9I1qu4', busca: 'leg press execução correta' },
+  { nome: 'Cadeira extensora', series: '3x12', musculo: 'quadríceps', execucao: 'Ajuste o encosto, estenda os joelhos sem travar no final e volte devagar.', videoId: 'RHgqvYAed_8', busca: 'cadeira extensora execução correta' },
+  { nome: 'Mesa flexora', series: '3x12', musculo: 'posterior de coxa', execucao: 'Deitado de bruços, flexione as pernas trazendo os calcanhares em direção aos glúteos de forma controlada.', videoId: 'FpC9Q7vXyX4', busca: 'mesa flexora execução correta' },
+  { nome: 'Panturrilha em pé', series: '4x15', musculo: 'panturrilhas', execucao: 'Suba na ponta dos pés estendendo ao máximo e desça alongando a musculatura abaixo da linha do degrau.', videoId: '3UWi44TX6kA', busca: 'panturrilha em pé execução correta' },
+
+  // Costas e Bíceps
+  { nome: 'Puxada frontal', series: '4x10', musculo: 'costas', execucao: 'Segure a barra aberta, peito aberto, e puxe até a altura do queixo levando os cotovelos para baixo e para trás.', videoId: 'ScK9NUack_k', busca: 'puxada frontal execução correta' },
+  { nome: 'Remada curvada', series: '4x10', musculo: 'costas', execucao: 'Com o tronco inclinado e a coluna neutra, puxe a barra em direção ao abdômen, sem balançar o corpo.', videoId: 'VJHBEy2duVc', busca: 'remada curvada execução correta' },
+  { nome: 'Remada baixa', series: '3x12', musculo: 'costas', execucao: 'Sentado no cabo com a coluna ereta, puxe o pegador triângulo em direção ao abdômen contraindo as escápulas.', videoId: 'GZbfZ033fBQ', busca: 'remada baixa triângulo execução' },
+  { nome: 'Rosca direta', series: '3x10', musculo: 'bíceps', execucao: 'Cotovelos colados ao corpo, suba a barra sem balançar o tronco e desça devagar.', videoId: 'n158HS07tOE', busca: 'rosca direta execução correta' },
+  { nome: 'Rosca martelo', series: '3x12', musculo: 'bíceps', execucao: 'Com pegada neutra (palmas viradas uma para a outra), flexione os cotovelos mantendo os braços firmes.', videoId: 'TwD-YGVP4Bk', busca: 'rosca martelo com halteres execução' },
+
+  // Peito e Tríceps
+  { nome: 'Supino reto', series: '4x10', musculo: 'peitoral', execucao: 'Deite no banco com os pés firmes no chão, segure a barra um pouco mais aberta que os ombros, desça até tocar de leve o peito e empurre sem tirar as costas do banco.', videoId: 'vIGvt-vgrvY', busca: 'supino reto execução correta' },
+  { nome: 'Supino inclinado', series: '4x10', musculo: 'peitoral superior', execucao: 'No banco a 30-45 graus, empurre os halteres ou barra para cima estendendo os braços e desça controlando.', videoId: '0G2_XV7slIg', busca: 'supino inclinado halteres execução' },
+  { nome: 'Crucifixo', series: '3x12', musculo: 'peitoral', execucao: 'Com cotovelos levemente flexionados, abra os braços até sentir o peitoral alongar e volte como se abraçasse uma árvore.', videoId: 'ohTfwQvg5u0', busca: 'crucifixo halteres execução correta' },
+  { nome: 'Tríceps testa', series: '3x12', musculo: 'tríceps', execucao: 'Deitado, mantenha os cotovelos fixos apontando para o teto e flexione só o antebraço, levando a barra em direção à testa.', videoId: 'VakpIeaaeXA', busca: 'tríceps testa execução correta' },
+  { nome: 'Tríceps pulley', series: '3x12', musculo: 'tríceps', execucao: 'Na polia alta com corda ou barra reta, estenda os antebraços para baixo até a contração máxima do tríceps.', videoId: '2-LAMcpzODU', busca: 'tríceps pulley corda execução' },
+
+  // Outros
+  { nome: 'Desenvolvimento com halteres', series: '4x10', musculo: 'ombros', execucao: 'Sentado, empurre os halteres acima da cabeça sem arquear a lombar e desça até a altura das orelhas.', videoId: 'eufDL9MmF8A', busca: 'desenvolvimento ombro halteres execução correta' },
+  { nome: 'Elevação lateral', series: '3x15', musculo: 'ombros', execucao: 'Com leve flexão de cotovelos, suba os halteres até a altura dos ombros, sem impulso.', videoId: 'U_T4z45fhLw', busca: 'elevação lateral execução correta' },
+  { nome: 'Prancha abdominal', series: '3x40s', musculo: 'abdômen', execucao: 'Apoie antebraços e pontas dos pés, corpo em linha reta, abdômen contraído, sem deixar o quadril cair.', videoId: '9dn5Fb3cSoE', busca: 'prancha abdominal execução correta' },
+  { nome: 'Alongamento geral', series: '10 min', musculo: 'corpo todo', execucao: 'Segure cada alongamento por 20 a 30 segundos, sem dor e respirando devagar.', videoId: 'w4LCsSxB-SQ', busca: 'alongamento pós treino' },
 ];
 const exerc = (n) => EXERCICIOS.find((e) => e.nome === n);
 
 // ---------- rotina cadastrada pelo instrutor (a Sonia só consulta, RN08) ----------
 const ROTINA = {
-  1: { treino: 'Treino A – Peito e tríceps', itens: ['Supino reto', 'Crucifixo', 'Tríceps testa', 'Prancha abdominal'] },
-  2: { treino: 'Treino B – Costas e bíceps', itens: ['Puxada frontal', 'Remada curvada', 'Rosca direta'] },
-  3: { treino: 'Treino C – Pernas', itens: ['Agachamento livre', 'Leg press', 'Cadeira extensora'] },
-  4: { treino: 'Treino D – Ombros e abdômen', itens: ['Desenvolvimento com halteres', 'Elevação lateral', 'Prancha abdominal'] },
-  5: { treino: 'Treino E – Corpo todo (leve)', itens: ['Agachamento livre', 'Supino reto', 'Puxada frontal', 'Alongamento geral'] },
-  6: { treino: 'Treino F – Alongamento e mobilidade', itens: ['Alongamento geral'] },
+  1: { treino: 'Treino A – Perna', itens: ['Agachamento livre', 'Leg press', 'Cadeira extensora', 'Mesa flexora', 'Panturrilha em pé'] },
+  2: { treino: 'Treino B – Costas e bíceps', itens: ['Puxada frontal', 'Remada curvada', 'Remada baixa', 'Rosca direta', 'Rosca martelo'] },
+  3: { treino: 'Treino C – Peito e tríceps', itens: ['Supino reto', 'Supino inclinado', 'Crucifixo', 'Tríceps testa', 'Tríceps pulley'] },
+  4: { treino: 'Treino A – Perna', itens: ['Agachamento livre', 'Leg press', 'Cadeira extensora', 'Mesa flexora', 'Panturrilha em pé'] },
+  5: { treino: 'Treino B – Costas e bíceps', itens: ['Puxada frontal', 'Remada curvada', 'Remada baixa', 'Rosca direta', 'Rosca martelo'] },
+  6: { treino: 'Treino C – Peito e tríceps', itens: ['Supino reto', 'Supino inclinado', 'Crucifixo', 'Tríceps testa', 'Tríceps pulley'] },
 };
 
 const ACADEMIA = {

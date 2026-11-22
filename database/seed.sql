@@ -258,3 +258,11 @@ INSERT INTO video_demonstracao (exercicio_id, titulo, url, fonte, autorizado) VA
 (19, 'Leg press 45° - execução correta e variações',       'https://www.youtube.com/watch?v=exemplo_legpress',     'Canal Exemplo', TRUE),
 (25, 'Prancha abdominal: como fazer e progressões',         'https://www.youtube.com/watch?v=exemplo_prancha',      'Canal Exemplo', TRUE);
 
+-- =============================================================================
+-- 7. ALUNO DE DEMONSTRAÇÃO
+-- =============================================================================
+
+INSERT INTO aluno (matricula, nome, email, senha_hash, data_nascimento, peso, altura, tempo_treino_meses, objetivo, nivel) VALUES
+('12345678912', 'Pedro Gabriel', 'pedro.gabriel@exemplo.com', '$2b$10$waKzCzxvtkLWZwvAAlRyeuvgu6zlASIrzSgQ9FgWZpBa3mCZHjX6u', '2001-08-20', 77.50, 1.78, 18, 'Hipertrofia e Ganho de Massa', 'intermediario');
+
+
