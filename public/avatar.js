@@ -2,7 +2,9 @@
 // Carrega um .glb simples (1 malha + 1 textura). O cenário da academia é uma "parede" 3D atrás da Sonia,
 // vista pela MESMA câmera: ao aproximar, afastar ou arrastar, a perspectiva do fundo muda junto (paralaxe real).
 (function () {
-  const MODEL_URL = '/models/sonia.glb';
+  const MODEL_URL = '/models/sonia.glb';             // reserva: modelo estático (sem animação)
+  const SKIN_URL = '/models/sonia_anim.glb';         // Sonia com esqueleto e animações (Idle, Talking, Excited, StandingGreeting, BreakdanceReady)
+  const SKIN_HEIGHT = 1.714;                         // altura do modelo animado em metros; é normalizada para 1 unidade (pés em y = -0,5)
   const BG_URL = '/img/academia.jpg';             // reserva, se o cenário 3D não carregar
   const ROOM_URL = '/models/modular_gym.glb';
   const SONIA_SCALE = 6.2;   // o cenário tem ~0,27 m por unidade (teto de 9 un. ≈ 2,5 m); a Sonia (1 un.) fica com ~1,7 m
@@ -77,13 +79,19 @@
 
   // ---------- programa da Sonia ----------
   const prog = program(`#version 300 es
-  in vec3 aPos; in vec3 aNor; in vec2 aUv;
-  uniform mat4 uMVP; uniform mat4 uModel;
+  in vec3 aPos; in vec3 aNor; in vec2 aUv; in uvec4 aJ; in vec4 aW;
+  uniform mat4 uMVP; uniform mat4 uModel; uniform int uSkinned; uniform highp sampler2D uBones;
   out vec3 vN; out vec2 vUv; out vec3 vW;
+  mat4 bone(uint j){ int r = int(j); return mat4(texelFetch(uBones, ivec2(0, r), 0), texelFetch(uBones, ivec2(1, r), 0), texelFetch(uBones, ivec2(2, r), 0), texelFetch(uBones, ivec2(3, r), 0)); }
   void main(){
-    vec4 w = uModel * vec4(aPos,1.0);
-    vW = w.xyz; vN = mat3(uModel) * aNor; vUv = aUv;
-    gl_Position = uMVP * vec4(aPos,1.0);
+    vec4 p = vec4(aPos, 1.0); vec3 n = aNor;
+    if (uSkinned == 1) {
+      mat4 s = bone(aJ.x) * aW.x + bone(aJ.y) * aW.y + bone(aJ.z) * aW.z + bone(aJ.w) * aW.w;
+      p = s * p; n = mat3(s) * aNor;
+    }
+    vec4 w = uModel * p;
+    vW = w.xyz; vN = mat3(uModel) * n; vUv = aUv;
+    gl_Position = uMVP * p;
   }`, `#version 300 es
   precision highp float;
   in vec3 vN; in vec2 vUv; in vec3 vW;
@@ -107,7 +115,19 @@
     pos: gl.getAttribLocation(prog, 'aPos'), nor: gl.getAttribLocation(prog, 'aNor'), uv: gl.getAttribLocation(prog, 'aUv'),
     mvp: gl.getUniformLocation(prog, 'uMVP'), model: gl.getUniformLocation(prog, 'uModel'),
     tex: gl.getUniformLocation(prog, 'uTex'), cam: gl.getUniformLocation(prog, 'uCam'),
+    j: gl.getAttribLocation(prog, 'aJ'), w: gl.getAttribLocation(prog, 'aW'),
+    skinned: gl.getUniformLocation(prog, 'uSkinned'), bones: gl.getUniformLocation(prog, 'uBones'),
   };
+  // textura com as matrizes de pele (4 texels por osso); uma 1x1 vazia serve para o modelo estático
+  const bonesTex = gl.createTexture();
+  function initBonesTex(n) {
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bonesTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 4, n, 0, gl.RGBA, gl.FLOAT, new Float32Array(4 * n * 4));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.activeTexture(gl.TEXTURE0);
+  }
+  initBonesTex(1);
 
   // ---------- programa do cenário (um plano grande atrás da Sonia) ----------
   const bgProg = program(`#version 300 es
@@ -306,6 +326,16 @@
     return n;
   }
 
+  // Modelo animado: malha com pele + esqueleto + clipes (lógica em /skeleton.js)
+  let player = null;
+  async function loadSkinnedModel(url) {
+    if (!window.SoniaSkeleton) throw new Error('skeleton.js não carregou');
+    const buf = await (await fetch(url)).arrayBuffer();
+    const d = window.SoniaSkeleton.loadSkinned(buf);
+    const bmp = await createImageBitmap(new Blob([d.mesh.imageBlobParts], { type: d.mesh.imageMime }), { imageOrientation: 'none' });
+    return { skinned: true, data: d, pos: d.mesh.pos, nor: d.mesh.nor, uv: d.mesh.uv, idx: d.mesh.idx, joints: d.mesh.joints, weights: d.mesh.weights, bmp };
+  }
+
   let mesh = null, count = 0, vao = null, texture = null;
   function upload(m) {
     vao = gl.createVertexArray(); gl.bindVertexArray(vao);
@@ -313,7 +343,16 @@
       const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
       gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0);
     };
-    bind(m.pos, loc.pos, 3); bind(normals(m.pos, m.idx), loc.nor, 3); bind(m.uv, loc.uv, 2);
+    bind(m.pos, loc.pos, 3); bind(m.skinned ? m.nor : normals(m.pos, m.idx), loc.nor, 3); bind(m.uv, loc.uv, 2);
+    if (m.skinned) {
+      let b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, m.joints, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc.j); gl.vertexAttribIPointer(loc.j, 4, gl.UNSIGNED_SHORT, 0, 0);
+      b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, m.weights, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc.w); gl.vertexAttribPointer(loc.w, 4, gl.FLOAT, false, 0, 0);
+      initBonesTex(m.data.skeleton.n);
+      player = window.SoniaSkeleton.createPlayer(m.data);
+      player.play('Idle', { fade: 0 });
+    }
     const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
     count = m.idx.length;
     texture = makeTexture(m.bmp);
@@ -345,9 +384,18 @@
 
     // movimento da Sonia: balanço suave parada; mais "animada" quando fala
     const s = state.speaking;
-    const rotY = Math.sin(t * 0.55) * 0.05 + Math.sin(t * 4.6) * 0.03 * s;
-    const bob = Math.sin(t * 1.7) * 0.0025 + Math.abs(Math.sin(t * 8.5)) * 0.007 * s;
-    const model = M.mul(M.trans(0, bob, 0), M.rotY(rotY));
+    let model;
+    if (player) {   // modelo animado: o movimento vem do clipe; só normalizamos o tamanho (1 unidade de altura, pés em y = -0,5)
+      const bones = player.update(dt);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bonesTex);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4, player.bones.length / 16, gl.RGBA, gl.FLOAT, bones);
+      gl.activeTexture(gl.TEXTURE0);
+      model = M.mul(M.trans(0, -0.5, 0), M.scale(1 / SKIN_HEIGHT));
+    } else {        // modelo estático (reserva): balanço simulado
+      const rotY = Math.sin(t * 0.55) * 0.05 + Math.sin(t * 4.6) * 0.03 * s;
+      const bob = Math.sin(t * 1.7) * 0.0025 + Math.abs(Math.sin(t * 8.5)) * 0.007 * s;
+      model = M.mul(M.trans(0, bob, 0), M.rotY(rotY));
+    }
 
     // câmera: busto (zoom=0) ou corpo inteiro (zoom=1); arrastar orbita a câmera em volta da Sonia
     const targetY = lerp(0.20, 0.0, state.zoom), dist = lerp(1.25, DIST_MAX, state.zoom);
@@ -403,6 +451,7 @@
     gl.uniformMatrix4fv(loc.model, false, model);
     gl.uniform3fv(loc.cam, eye);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture); gl.uniform1i(loc.tex, 0);
+    gl.uniform1i(loc.skinned, player ? 1 : 0); gl.uniform1i(loc.bones, 1);
     gl.bindVertexArray(vao);
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, 0);
   }
@@ -419,7 +468,13 @@
   canvas.addEventListener('dblclick', cycleZoom);
 
   window.sonia = {
-    setSpeaking(on) { state.speakTarget = on ? 1 : 0; },
+    setSpeaking(on) {
+      state.speakTarget = on ? 1 : 0;
+      if (player) player.play(on ? 'Talking' : 'Idle');
+    },
+    // Toca uma animação: play('Excited', { once: true }) toca uma vez e volta ao Idle. Nomes em sonia.clips.
+    play(name, opts) { return player ? player.play(name, opts) : false; },
+    get clips() { return player ? player.clips : []; },
     toggleZoom: cycleZoom,
     setLevel(i) { level = i; state.zoomTarget = LEVELS[i]; state.zoom = LEVELS[i]; },   // usado em testes
     setYaw(a) { state.yaw = a; state.yawTarget = a; },                                  // usado em testes
@@ -435,8 +490,13 @@
     roomParts = r.parts; roomBounds = r.bounds; ROOM.bounds = r.bounds;
     ROOM.ready = true;
   }).catch((e) => console.warn('Cenário 3D não carregou, usando a foto:', e));
-  Promise.all([loadGLB(MODEL_URL), loadBg, loadRoomP]).then(([m]) => {
+  const loadModel = loadSkinnedModel(SKIN_URL).catch((e) => {
+    console.warn('Sonia animada indisponível, usando o modelo estático:', e);
+    return loadGLB(MODEL_URL);
+  });
+  Promise.all([loadModel, loadBg, loadRoomP]).then(([m]) => {
     upload(m); window.sonia.ready = true;
+    if (player) player.play('StandingGreeting', { once: true });   // cumprimenta ao entrar
     document.getElementById('avatar-loading').hidden = true;
     requestAnimationFrame(frame);
   }).catch((e) => {

@@ -754,6 +754,7 @@ const App = {
           body: JSON.stringify({}),
         });
         const json = await res.json();
+        window.sonia?.play?.('Excited', { once: true });
         alert(json.data.mensagem || 'Check-in realizado com sucesso!');
       } catch (err) {
         alert('Erro ao realizar check-in.');

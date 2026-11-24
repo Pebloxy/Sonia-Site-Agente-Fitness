@@ -1,12 +1,13 @@
 // public/sw.js
 // Service Worker da Sonia para suporte a PWA e Modo Offline (RF26, RNF12)
 
-const CACHE_NAME = 'sonia-cache-v8';
+const CACHE_NAME = 'sonia-cache-v9';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/css/style.css',
   '/js/app.js',
+  '/skeleton.js',
   '/avatar.js',
   '/manifest.json',
 ];
