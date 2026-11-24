@@ -42,7 +42,10 @@ const App = {
     if (activePanel) {
       activePanel.classList.add('active');
       if (viewId === 'rotina-view') this.carregarRotina();
-      if (viewId === 'agendamentos-view') this.carregarAgendamentos();
+      if (viewId === 'agendamentos-view') {
+        window.sonia?.play?.('BreakdanceReady', { restart: true, fade: 0.25 });
+        this.carregarAgendamentos();
+      }
       if (viewId === 'dashboard-view') this.carregarDashboard();
     }
   },
@@ -367,6 +370,7 @@ const App = {
           </div>
           <a class="chat-card-link" href="${this.esc(c.url)}" target="_blank" rel="noopener">Abrir no YouTube ↗</a>`;
         el.querySelector('.video-play').addEventListener('click', () => {
+          window.sonia?.play?.('BreakdanceReady', { restart: true, fade: 0.25 });
           const box = el.querySelector('.video-box');
           box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${c.videoId}?autoplay=1&rel=0" title="${this.esc(c.titulo)}" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
         });
@@ -404,6 +408,13 @@ const App = {
       const reply = data.reply || 'Ops, tive um imprevisto na conexão. Tente de novo!';
       this.adicionarMensagemNaTela('sonia', reply);
       this.adicionarCartoes(data.cards);
+      const temAssuntoBreakdance =
+  /(v[íi]deo|agend[ar|amento|amentos]|hor[áa]rio|como fazer|execu[çc][ãa]o|exerc[íi]cio)/i.test(texto + ' ' + reply) ||
+  (Array.isArray(data.cards) && data.cards.some(c => c.tipo === 'video'));
+
+if (temAssuntoBreakdance) {
+  window.sonia?.play?.('BreakdanceReady', { restart: true, fade: 0.25 });
+}
       this.falar(reply);
     } catch (err) {
       typingIndicator.remove();
@@ -575,6 +586,7 @@ const App = {
         });
 
         const json = await res.json();
+        window.sonia?.play?.('Excited', { once: true, back: 'Idle', fade: 0.25 });
         modal?.setAttribute('hidden', 'true');
         alert(json.data?.mensagem || 'Treino e avaliação registrados com sucesso! Foco total! 💪');
       } catch (err) {
